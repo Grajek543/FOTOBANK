@@ -42,3 +42,19 @@ def login(user_data: schemas.UserLogin, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Nieprawidłowy login lub hasło.")
 
     return {"message": "Zalogowano pomyślnie", "user_id": user.id, "role": user.role}
+
+@router.put("/update", response_model=schemas.UserRead)
+def update_user(user_update: schemas.UserUpdate, user_id: int, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Zamiast: hashed_username = pwd_context.hash(user_update.username)
+    # przypisujemy nową nazwę użytkownika bez hashowania:
+    user.username = user_update.username
+
+    db.commit()
+    db.refresh(user)
+    return user
+
+

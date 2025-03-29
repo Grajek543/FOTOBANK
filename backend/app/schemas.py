@@ -35,3 +35,6 @@ class PhotoRead(BaseModel):
 class UserLogin(BaseModel):
     email: EmailStr
     password: constr(min_length=6)
+
+class UserUpdate(BaseModel):
+    username: constr(min_length=3)

@@ -1,21 +1,26 @@
+// src/pages/Register.js
 import React, { useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const navigate = useNavigate();
 
   const handleRegister = (e) => {
     e.preventDefault();
-    axios
-      .post("http://localhost:8000/users/register", { email, password })
+    axios.post("http://localhost:8000/users/register", { email, password })
       .then((res) => {
         alert("Konto założone!");
-        console.log(res.data);
+        // Zapisujemy dane użytkownika (otrzymane z backendu) w localStorage
+        localStorage.setItem("user", JSON.stringify(res.data));
+        // Po rejestracji przekierowujemy do strony uzupełnienia dodatkowych danych
+        navigate("/account");
       })
       .catch((err) => {
-        alert("Błąd rejestracji");
         console.error(err);
+        alert("Błąd rejestracji");
       });
   };
 
@@ -30,8 +35,8 @@ function Register() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-400 focus:border-blue-400"
               required
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
             />
           </div>
           <div>
@@ -40,16 +45,11 @@ function Register() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-400 focus:border-blue-400"
               required
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
             />
           </div>
-          <button
-            type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition"
-          >
-            Zarejestruj się
-          </button>
+          <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-md">Zarejestruj się</button>
         </form>
       </div>
     </div>
