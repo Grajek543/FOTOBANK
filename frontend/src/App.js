@@ -1,33 +1,41 @@
 import React from "react";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+
 import Navbar from "./components/Navbar";
 import CategoriesBar from "./components/CategoriesBar";
-import Gallery from "./components/Gallery";
 import Footer from "./components/Footer";
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
-import Home from './pages/Home';
-import Register from './pages/Register';
-import Login from './pages/Login';
-import UploadPhoto from './pages/UploadPhoto';
 
+import Home from "./pages/Home";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import UploadPhoto from "./pages/UploadPhoto";
+
+function AppContent() {
+  const location = useLocation();
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <Navbar />
+      {/* Wyświetlamy CategoriesBar tylko, gdy użytkownik jest na stronie głównej */}
+      {location.pathname === "/" && <CategoriesBar />}
+      <main className="flex-grow px-6 py-4">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/upload" element={<UploadPhoto />} />
+        </Routes>
+      </main>
+      <Footer />
+    </div>
+  );
+}
 
 function App() {
   return (
     <BrowserRouter>
-      <nav>
-        <Link to="/">Strona główna</Link> |{" "}
-        <Link to="/register">Rejestracja</Link> |{" "}
-        <Link to="/login">Logowanie</Link> |{" "}
-        <Link to="/upload">Prześlij zdjęcie</Link>
-      </nav>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/upload" element={<UploadPhoto />} />
-      </Routes>
+      <AppContent />
     </BrowserRouter>
-    
-    
   );
 }
 
