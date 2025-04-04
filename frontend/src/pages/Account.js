@@ -1,45 +1,52 @@
+// src/pages/Account.js
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 
 function Account() {
   const [username, setUsername] = useState("");
-  const [user, setUser] = useState(null);
+  const [userId, setUserId] = useState(null);  // lub usuwamy, jeśli backend i tak czyta z tokena
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+    // Odczytujemy user_id (opcjonalnie) z localStorage
+    const storedUserId = localStorage.getItem("user_id");
+    if (storedUserId) {
+      setUserId(storedUserId);
     }
   }, []);
 
   const handleUpdate = (e) => {
     e.preventDefault();
-    // Używamy user.user_id, bo taki klucz mamy w localStorage
-    axios.put(`http://localhost:8000/users/update?user_id=${user.user_id}`, {
+
+    // Pobieramy token
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      alert("Brak tokenu, zaloguj się ponownie!");
+      return;
+    }
+
+    axios.put("http://localhost:8000/users/update", {
       username: username,
+    }, {
+      headers: {
+        "Authorization": `Bearer ${token}`
+      }
     })
-      .then((res) => {
-        alert("Dane zaktualizowane!");
-        setUser(res.data);
-        localStorage.setItem("user", JSON.stringify(res.data));
-      })
-      .catch((err) => {
-        console.error(err);
-        alert("Błąd aktualizacji");
-      });
+    .then((res) => {
+      alert("Dane zaktualizowane!");
+      console.log(res.data);
+    })
+    .catch((err) => {
+      console.error(err);
+      alert("Błąd aktualizacji");
+    });
   };
 
   return (
     <div className="min-h-screen p-8">
       <h2 className="text-2xl font-bold mb-4">Twoje Konto</h2>
-      {user ? (
+      {userId ? (
         <div>
-          <p><strong>Email:</strong> {user.email}</p>
-          <p><strong>Rola:</strong> {user.role}</p>
-          <p>
-            <strong>Nazwa użytkownika:</strong>{" "}
-            {user.username ? user.username : "Nie ustawiono"}
-          </p>
+          <p><strong>User ID:</strong> {userId}</p>
           <form onSubmit={handleUpdate} className="mt-4">
             <label className="block mb-2">Zmień nazwę użytkownika:</label>
             <input
@@ -56,7 +63,7 @@ function Account() {
           </form>
         </div>
       ) : (
-        <p>Brak danych użytkownika.</p>
+        <p>Brak user_id – zaloguj się.</p>
       )}
     </div>
   );

@@ -10,6 +10,12 @@ function UploadPhoto() {
 
   const handleUpload = (e) => {
     e.preventDefault();
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      alert("Brak tokenu! Zaloguj się, aby przesłać zdjęcie.");
+      return;
+    }
+
     if(!file) {
       alert("Wybierz plik!");
       return;
@@ -24,7 +30,8 @@ function UploadPhoto() {
 
     axios.post("http://localhost:8000/photos/upload", formData, {
       headers: {
-        "Content-Type": "multipart/form-data"
+        "Content-Type": "multipart/form-data",
+        "Authorization": `Bearer ${token}`
       }
     })
     .then((res) => {
@@ -43,23 +50,41 @@ function UploadPhoto() {
       <form onSubmit={handleUpload}>
         <div>
           <label>Tytuł:</label><br />
-          <input value={title} onChange={(e)=>setTitle(e.target.value)} />
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
         </div>
         <div>
           <label>Opis:</label><br />
-          <input value={description} onChange={(e)=>setDescription(e.target.value)} />
+          <input
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
         </div>
         <div>
           <label>Kategoria:</label><br />
-          <input value={category} onChange={(e)=>setCategory(e.target.value)} />
+          <input
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+          />
         </div>
         <div>
           <label>Cena:</label><br />
-          <input type="number" step="0.01" value={price} onChange={(e)=>setPrice(e.target.value)} />
+          <input
+            type="number"
+            step="0.01"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+          />
         </div>
         <div>
           <label>Plik (JPEG/PNG):</label><br />
-          <input type="file" accept=".jpg,.jpeg,.png" onChange={(e)=>setFile(e.target.files[0])} />
+          <input
+            type="file"
+            accept=".jpg,.jpeg,.png"
+            onChange={(e) => setFile(e.target.files[0])}
+          />
         </div>
         <button type="submit">Wyślij</button>
       </form>

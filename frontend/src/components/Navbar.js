@@ -1,3 +1,4 @@
+// src/components/Navbar.js
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FaSearch, FaUserCircle } from "react-icons/fa";
@@ -7,7 +8,6 @@ function Navbar({ isAuthenticated, setIsAuthenticated }) {
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
-  // Zamykamy dropdown po kliknięciu poza jego obszar
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -19,18 +19,21 @@ function Navbar({ isAuthenticated, setIsAuthenticated }) {
   }, []);
 
   const handleLogout = () => {
-    // Usuwamy dane użytkownika z localStorage
-    localStorage.removeItem("user");
+    // Usuwamy token i inne dane z localStorage
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("user_id");
+    localStorage.removeItem("role");
+
     // Aktualizujemy stan autentykacji
     setIsAuthenticated(false);
-    // Przekierowujemy użytkownika do strony głównej (lub strony logowania)
+
+    // Przekierowujemy użytkownika do strony głównej
     navigate("/");
     setDropdownOpen(false);
   };
 
   return (
     <nav className="bg-gray-200 shadow-md px-6 py-4 flex items-center justify-between">
-      {/* Lewa część: logo i wyszukiwarka */}
       <div className="flex items-center gap-6 flex-1">
         <Link to="/" className="text-2xl font-bold text-blue-600">
           FOTOBANK
@@ -45,7 +48,6 @@ function Navbar({ isAuthenticated, setIsAuthenticated }) {
         </div>
       </div>
 
-      {/* Prawa część: ikona użytkownika z dropdownem */}
       <div className="relative" ref={dropdownRef}>
         <FaUserCircle
           className="text-3xl text-gray-600 cursor-pointer ml-5"
@@ -53,7 +55,6 @@ function Navbar({ isAuthenticated, setIsAuthenticated }) {
         />
         {dropdownOpen && (
           <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-2 z-10">
-            {/* Strzałka wskazująca dropdown */}
             <div className="w-4 h-4 bg-white absolute top-0 right-4 -mt-2 transform rotate-45 shadow-md"></div>
             {isAuthenticated ? (
               <>

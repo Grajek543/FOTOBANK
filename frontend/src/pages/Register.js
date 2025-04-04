@@ -1,4 +1,3 @@
-// src/pages/Register.js
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -13,9 +12,11 @@ function Register() {
     axios.post("http://localhost:8000/users/register", { email, password })
       .then((res) => {
         alert("Konto założone!");
-        // Zapisujemy dane użytkownika (otrzymane z backendu) w localStorage
-        localStorage.setItem("user", JSON.stringify(res.data));
-        // Po rejestracji przekierowujemy do strony uzupełnienia dodatkowych danych
+
+        // Jeśli backend zwraca token i user_id:
+        localStorage.setItem("access_token", res.data.access_token);
+        localStorage.setItem("user_id", res.data.user_id);
+
         navigate("/account");
       })
       .catch((err) => {
@@ -49,7 +50,12 @@ function Register() {
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
             />
           </div>
-          <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-md">Zarejestruj się</button>
+          <button
+            type="submit"
+            className="w-full bg-blue-600 text-white py-2 rounded-md"
+          >
+            Zarejestruj się
+          </button>
         </form>
       </div>
     </div>

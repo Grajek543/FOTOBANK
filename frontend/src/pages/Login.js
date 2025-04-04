@@ -1,4 +1,3 @@
-// src/pages/Login.js
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -13,9 +12,12 @@ function Login() {
     axios.post("http://localhost:8000/users/login", { email, password })
       .then((res) => {
         alert("Zalogowano!");
-        // Zapisujemy dane użytkownika w localStorage
-        localStorage.setItem("user", JSON.stringify(res.data));
-        navigate("/account"); // przekierowanie do strony konta
+
+        // Zapisujemy token i user_id, jeśli backend je zwraca
+        localStorage.setItem("access_token", res.data.access_token);
+        localStorage.setItem("user_id", res.data.user_id);
+
+        navigate("/account");
       })
       .catch((err) => {
         console.error(err);
@@ -48,7 +50,12 @@ function Login() {
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
             />
           </div>
-          <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-md">Zaloguj się</button>
+          <button
+            type="submit"
+            className="w-full bg-blue-600 text-white py-2 rounded-md"
+          >
+            Zaloguj się
+          </button>
         </form>
       </div>
     </div>

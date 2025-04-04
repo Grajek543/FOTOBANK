@@ -1,3 +1,4 @@
+// src/App.js
 import React, { useState, useEffect } from "react"; 
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 
@@ -17,8 +18,9 @@ function AppContent() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    const userData = localStorage.getItem("user");
-    setIsAuthenticated(!!userData);
+    // Sprawdzamy, czy w localStorage jest token:
+    const token = localStorage.getItem("access_token");
+    setIsAuthenticated(!!token); 
   }, [location]);
 
   return (
@@ -52,3 +54,4 @@ function App() {
 }
 
 export default App;
+
