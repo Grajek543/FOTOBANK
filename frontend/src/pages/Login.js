@@ -17,7 +17,7 @@ function Login() {
         localStorage.setItem("access_token", res.data.access_token);
         localStorage.setItem("user_id", res.data.user_id);
 
-        navigate("/account");
+        navigate("/");
       })
       .catch((err) => {
         console.error(err);

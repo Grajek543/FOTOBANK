@@ -1,40 +1,44 @@
 # app/schemas.py
-from pydantic import BaseModel, EmailStr, constr
-from typing import Optional
-
-class UserCreate(BaseModel):
-    email: EmailStr
-    password: constr(min_length=6)
+from pydantic import BaseModel
 
 class UserRead(BaseModel):
     id: int
-    email: EmailStr
-    role: str
+    email: str
+    username: str | None = None
+    role: str | None = None
 
     class Config:
         orm_mode = True
 
+class UserCreate(BaseModel):
+    email: str
+    password: str
+    username: str | None = None
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+class UserUpdate(BaseModel):
+    username: str
+
+
+from pydantic import BaseModel
+
 class PhotoCreate(BaseModel):
     title: str
-    description: Optional[str] = None
-    category: Optional[str] = None
-    price: float = 0.0
-
-    # Bez file_path, bo to będzie nadawane po uploadzie
+    description: str
+    category: str
+    price: float
 
 class PhotoRead(BaseModel):
     id: int
     title: str
-    description: Optional[str]
-    category: Optional[str]
+    description: str
+    category: str
     price: float
+    file_path: str
+    owner_id: int
 
     class Config:
         orm_mode = True
-        
-class UserLogin(BaseModel):
-    email: EmailStr
-    password: constr(min_length=6)
-
-class UserUpdate(BaseModel):
-    username: constr(min_length=3)

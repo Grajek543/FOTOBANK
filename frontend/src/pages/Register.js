@@ -5,23 +5,40 @@ import { useNavigate } from "react-router-dom";
 function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
+
   const navigate = useNavigate();
 
   const handleRegister = (e) => {
     e.preventDefault();
-    axios.post("http://localhost:8000/users/register", { email, password })
+    axios
+      .post("http://localhost:8000/users/register", {
+        email,
+        password,
+        username,
+      })
       .then((res) => {
+        console.log("Odpowiedź z backendu:", res.data);
         alert("Konto założone!");
 
-        // Jeśli backend zwraca token i user_id:
-        localStorage.setItem("access_token", res.data.access_token);
-        localStorage.setItem("user_id", res.data.user_id);
+        // jeśli backend nie zwraca tokena, można to wyłączyć
+        if (res.data.access_token) {
+          localStorage.setItem("access_token", res.data.access_token);
+        }
+        if (res.data.user_id) {
+          localStorage.setItem("user_id", res.data.user_id);
+        }
 
         navigate("/account");
       })
       .catch((err) => {
-        console.error(err);
-        alert("Błąd rejestracji");
+        if (err.response) {
+          console.error("Błąd rejestracji:", err.response.data);
+          alert("Błąd rejestracji: " + err.response.data.detail);
+        } else {
+          console.error("Nieznany błąd:", err);
+          alert("Nieznany błąd rejestracji");
+        }
       });
   };
 
@@ -40,6 +57,7 @@ function Register() {
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
             />
           </div>
+
           <div>
             <label className="block text-gray-700">Hasło</label>
             <input
@@ -50,6 +68,18 @@ function Register() {
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
             />
           </div>
+
+          <div>
+            <label className="block text-gray-700">Nazwa użytkownika</label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+            />
+          </div>
+
           <button
             type="submit"
             className="w-full bg-blue-600 text-white py-2 rounded-md"

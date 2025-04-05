@@ -12,6 +12,7 @@ import Register from "./pages/Register";
 import UploadPhoto from "./pages/UploadPhoto";
 import Account from "./pages/Account";
 import Settings from "./pages/Settings";
+import Cart from "./pages/Cart";
 
 function AppContent() {
   const location = useLocation();
@@ -38,6 +39,7 @@ function AppContent() {
           <Route path="/upload" element={<UploadPhoto />} />
           <Route path="/account" element={<Account />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/cart" element={<Cart />} />
         </Routes>
       </main>
       <Footer />
