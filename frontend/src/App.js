@@ -1,4 +1,3 @@
-// src/App.js
 import React, { useState, useEffect } from "react"; 
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 
@@ -13,13 +12,13 @@ import UploadPhoto from "./pages/UploadPhoto";
 import Account from "./pages/Account";
 import Settings from "./pages/Settings";
 import Cart from "./pages/Cart";
+import AdminPanel from "./pages/AdminPanel"; 
 
 function AppContent() {
   const location = useLocation();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    // Sprawdzamy, czy w localStorage jest token:
     const token = localStorage.getItem("access_token");
     setIsAuthenticated(!!token); 
   }, [location]);
@@ -40,6 +39,8 @@ function AppContent() {
           <Route path="/account" element={<Account />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/cart" element={<Cart />} />
+          <Route path="/admin" element={<AdminPanel />} /> 
+          <Route path="*" element={<div>404 w React Router / brak dopasowanej ścieżki</div>} />
         </Routes>
       </main>
       <Footer />

@@ -1,4 +1,5 @@
-# app/schemas.py
+
+
 from pydantic import BaseModel
 
 class UserRead(BaseModel):
@@ -8,7 +9,7 @@ class UserRead(BaseModel):
     role: str | None = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True 
 
 class UserCreate(BaseModel):
     email: str
@@ -21,9 +22,6 @@ class UserLogin(BaseModel):
 
 class UserUpdate(BaseModel):
     username: str
-
-
-from pydantic import BaseModel
 
 class PhotoCreate(BaseModel):
     title: str
@@ -41,4 +39,8 @@ class PhotoRead(BaseModel):
     owner_id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
+
+
+class UserRoleUpdate(BaseModel):
+    new_role: str

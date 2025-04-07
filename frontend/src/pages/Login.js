@@ -1,3 +1,5 @@
+// src/pages/Login.js
+
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -9,19 +11,24 @@ function Login() {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    axios.post("http://localhost:8000/users/login", { email, password })
+
+    axios.post("http://127.0.0.1:8000/users/login", { email, password })
       .then((res) => {
         alert("Zalogowano!");
 
-        // Zapisujemy token i user_id, jeśli backend je zwraca
         localStorage.setItem("access_token", res.data.access_token);
         localStorage.setItem("user_id", res.data.user_id);
+        localStorage.setItem("role", res.data.role); 
 
         navigate("/");
       })
       .catch((err) => {
         console.error(err);
-        alert("Błąd logowania");
+        if (err.response?.status === 401) {
+          alert("Nieprawidłowy login lub hasło.");
+        } else {
+          alert("Błąd logowania");
+        }
       });
   };
 

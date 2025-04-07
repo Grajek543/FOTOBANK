@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FaSearch, FaUserCircle, FaShoppingCart } from "react-icons/fa";
@@ -6,10 +7,27 @@ import axios from "axios";
 function Navbar({ isAuthenticated, setIsAuthenticated }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [username, setUsername] = useState(null);
+  const [role, setRole] = useState(null);
+
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
+    const token = localStorage.getItem("access_token");
+    const storedRole = localStorage.getItem("role");
+    setRole(storedRole);
+
+    if (isAuthenticated && token) {
+      axios
+        .get("http://127.0.0.1:8000/users/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        .then((res) => {
+          setUsername(res.data.username);
+        })
+        .catch(() => setUsername(null));
+    }
+
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setDropdownOpen(false);
@@ -17,17 +35,9 @@ function Navbar({ isAuthenticated, setIsAuthenticated }) {
     };
     document.addEventListener("mousedown", handleClickOutside);
 
-    const token = localStorage.getItem("access_token");
-    if (isAuthenticated && token) {
-      axios
-        .get("http://localhost:8000/users/me", {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        .then((res) => setUsername(res.data.username))
-        .catch(() => setUsername(null));
-    }
-
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, [isAuthenticated]);
 
   const handleLogout = () => {
@@ -35,6 +45,7 @@ function Navbar({ isAuthenticated, setIsAuthenticated }) {
     localStorage.removeItem("user_id");
     localStorage.removeItem("role");
     setIsAuthenticated(false);
+    setRole(null);
     navigate("/");
     setDropdownOpen(false);
   };
@@ -65,16 +76,6 @@ function Navbar({ isAuthenticated, setIsAuthenticated }) {
           className="relative cursor-pointer"
           onClick={() => {
             setDropdownOpen(!dropdownOpen);
-          
-            const token = localStorage.getItem("access_token");
-            if (isAuthenticated && token) {
-              axios
-                .get("http://localhost:8000/users/me", {
-                  headers: { Authorization: `Bearer ${token}` },
-                })
-                .then((res) => setUsername(res.data.username))
-                .catch(() => setUsername(null));
-            }
           }}
         >
           <FaUserCircle className="text-3xl text-gray-600" />
@@ -108,6 +109,17 @@ function Navbar({ isAuthenticated, setIsAuthenticated }) {
 
             {isAuthenticated ? (
               <>
+                {/* Pokazuj link do panelu admina TYLKO jeśli rola = "admin" */}
+                {role === "admin" && (
+                  <Link
+                    to="/admin"
+                    className="block px-4 py-2 text-gray-700 hover:bg-gray-100 transition"
+                    onClick={() => setDropdownOpen(false)}
+                  >
+                    Panel Admina
+                  </Link>
+                )}
+
                 <Link
                   to="/account"
                   className="block px-4 py-2 text-gray-700 hover:bg-gray-100 transition"
