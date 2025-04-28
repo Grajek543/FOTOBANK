@@ -1,5 +1,5 @@
 # app/models.py
-from sqlalchemy import Column, Integer, String, Float, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, LargeBinary
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -20,8 +20,8 @@ class Photo(Base):
     description = Column(String(1024))
     category = Column(String(100))
     price = Column(Float, default=0.0)
-    file_path = Column(String(255))
+    file_path = Column(String(255), nullable=True)  # Możesz zostawić na przyszłość
+    file_data = Column(LargeBinary, nullable=True)  # <-- Nowa kolumna: binarne dane zdjęcia
     owner_id = Column(Integer, ForeignKey("users.id"))
 
     owner = relationship("User", back_populates="photos")
-

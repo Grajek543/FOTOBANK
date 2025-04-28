@@ -35,11 +35,12 @@ class PhotoRead(BaseModel):
     description: str
     category: str
     price: float
-    file_path: str
     owner_id: int
+    owner_username: str
 
     class Config:
-        from_attributes = True
+        orm_mode = True
+
 
 
 class UserRoleUpdate(BaseModel):

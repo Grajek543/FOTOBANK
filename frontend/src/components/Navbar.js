@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FaSearch, FaUserCircle, FaShoppingCart } from "react-icons/fa";
@@ -109,7 +108,6 @@ function Navbar({ isAuthenticated, setIsAuthenticated }) {
 
             {isAuthenticated ? (
               <>
-                {/* Pokazuj link do panelu admina TYLKO jeśli rola = "admin" */}
                 {role === "admin" && (
                   <Link
                     to="/admin"
@@ -119,7 +117,6 @@ function Navbar({ isAuthenticated, setIsAuthenticated }) {
                     Panel Admina
                   </Link>
                 )}
-
                 <Link
                   to="/account"
                   className="block px-4 py-2 text-gray-700 hover:bg-gray-100 transition"
@@ -134,6 +131,14 @@ function Navbar({ isAuthenticated, setIsAuthenticated }) {
                 >
                   Ustawienia
                 </Link>
+                <Link
+                   to="/myphotos"
+                    className="block px-4 py-2 text-gray-700 hover:bg-gray-100 transition"
+                    onClick={() => setDropdownOpen(false)}
+                  >
+                  Moje zdjęcia
+                  </Link>
+
                 <button
                   onClick={handleLogout}
                   className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 transition"

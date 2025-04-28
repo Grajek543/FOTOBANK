@@ -13,6 +13,8 @@ import Account from "./pages/Account";
 import Settings from "./pages/Settings";
 import Cart from "./pages/Cart";
 import AdminPanel from "./pages/AdminPanel"; 
+import MyPhotos from "./pages/MyPhotos";
+import PhotoDetails from "./pages/PhotoDetails";
 
 function AppContent() {
   const location = useLocation();
@@ -36,10 +38,12 @@ function AppContent() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/upload" element={<UploadPhoto />} />
+          <Route path="/myphotos" element={<MyPhotos />} />
           <Route path="/account" element={<Account />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/admin" element={<AdminPanel />} /> 
+          <Route path="/photo/:photoId" element={<PhotoDetails />} />
           <Route path="*" element={<div>404 w React Router / brak dopasowanej ścieżki</div>} />
         </Routes>
       </main>
