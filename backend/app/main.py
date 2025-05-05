@@ -1,19 +1,33 @@
 from fastapi import FastAPI
-from app.database import engine, Base
-from app.routers import users, photos
 from fastapi.middleware.cors import CORSMiddleware
 
-# Tworzymy tabele w bazie, jeśli nie istnieją
+from app.database import engine, Base
+from app.routers import users, photos, media          # ← zostaje
+from app.routers.upload_router import router as upload_router   # ← DODAJ
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 Base.metadata.create_all(bind=engine)
 
-# Tworzymy aplikację FastAPI
-app = FastAPI(title="FotoBank", version="1.0.0")
+app = FastAPI()
 
-# Konfiguracja CORS (połączenia frontend-backend)
-origins = [
-    "http://localhost:3000",  # frontend React działa na porcie 3000
-]
+MEDIA_DIR = Path("media")
+MEDIA_DIR.mkdir(exist_ok=True) 
 
+# ─── ROUTERS ──────────────────────────────────────────────
+app.include_router(users.router,   prefix="/users",  tags=["Users"])
+
+# ↘ jeśli w photos.router jest już  prefix="/photos",
+#   to nie podajemy go drugi raz:
+app.include_router(photos.router,  tags=["Photos"])
+
+# ↘  upload_router też ma prefix="/photos" w definicji
+app.include_router(upload_router,  tags=["Photos"])
+
+app.include_router(media.router,   prefix="/media",  tags=["Media"])
+# ──────────────────────────────────────────────────────────
+
+# CORS
+origins = ["http://localhost:3000"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -22,10 +36,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Podłączanie routerów
-app.include_router(users.router, prefix="/users", tags=["Users"])
-app.include_router(photos.router, prefix="/photos", tags=["Photos"])
-
 @app.get("/")
 def root():
-    return {"message": "Witaj w FotoBank API!"}
+    return {"message": "Witaj w FotoBank API!"}
+app.mount("/media", StaticFiles(directory="media"), name="media")

@@ -1,6 +1,6 @@
 // src/pages/UploadPhoto.js
 import React, { useState } from "react";
-import axios from "axios";
+import { uploadFileInChunks } from "../utils/chunkUpload";
 
 function UploadPhoto() {
   const [title, setTitle] = useState("");
@@ -14,7 +14,7 @@ function UploadPhoto() {
     e.preventDefault();
     const token = localStorage.getItem("access_token");
     if (!token) {
-      alert("Brak tokenu! Zaloguj się, aby przesłać zdjęcie.");
+      alert("Brak tokenu! Zaloguj się, aby przesłać plik.");
       return;
     }
 
@@ -23,36 +23,34 @@ function UploadPhoto() {
       return;
     }
 
-    const formData = new FormData();
-    formData.append("title", title);
-    formData.append("description", description);
-    formData.append("category", category);
-    formData.append("price", price);
-    formData.append("file", file);
-
     try {
-      await axios.post("http://localhost:8000/photos/upload", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-          "Authorization": `Bearer ${token}`,
+      await uploadFileInChunks(
+        file,
+        {
+          title,
+          description,
+          category,
+          price,
+          media_type: file.type.startsWith("image") ? "image" : "video",
         },
-        onUploadProgress: (progressEvent) => {
-          const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          setUploadProgress(percent);
-        },
-      });
-
-      alert("Zdjęcie przesłane!");
+        token
+      );
+      alert("Plik przesłany!");
       setUploadProgress(0);
+      setFile(null);
+      setTitle("");
+      setDescription("");
+      setCategory("");
+      setPrice(0.0);
     } catch (err) {
       console.error(err);
-      alert("Błąd podczas wysyłania zdjęcia.");
+      alert("Błąd podczas wysyłania pliku.");
     }
   };
 
   return (
     <div className="min-h-screen p-8">
-      <h2 className="text-2xl font-bold mb-6">Prześlij zdjęcie</h2>
+      <h2 className="text-2xl font-bold mb-6">Prześlij plik (zdjęcie lub wideo)</h2>
       <form onSubmit={handleUpload} className="space-y-4 max-w-md mx-auto">
         <div>
           <label className="block text-gray-700 mb-1">Tytuł:</label>
@@ -89,10 +87,10 @@ function UploadPhoto() {
           />
         </div>
         <div>
-          <label className="block text-gray-700 mb-1">Plik (JPEG/PNG):</label>
+          <label className="block text-gray-700 mb-1">Plik (JPG/PNG/MP4):</label>
           <input
             type="file"
-            accept=".jpg,.jpeg,.png"
+            accept="image/*,video/*"
             onChange={(e) => setFile(e.target.files[0])}
             className="border rounded w-full px-3 py-2"
           />

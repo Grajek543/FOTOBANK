@@ -15,6 +15,7 @@ import Cart from "./pages/Cart";
 import AdminPanel from "./pages/AdminPanel"; 
 import MyPhotos from "./pages/MyPhotos";
 import PhotoDetails from "./pages/PhotoDetails";
+import Gallery from "./pages/Gallery";
 
 function AppContent() {
   const location = useLocation();
@@ -36,6 +37,7 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/gallery" element={<Gallery />} />
           <Route path="/register" element={<Register />} />
           <Route path="/upload" element={<UploadPhoto />} />
           <Route path="/myphotos" element={<MyPhotos />} />
