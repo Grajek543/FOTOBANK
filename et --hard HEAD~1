@@ -1,0 +1,12 @@
+[33m0a5937f[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m fix: usunięto zbyt duży plik mp4 z historii commita
+[33mf334670[m pełna obsługa miniatur i podglądu zdjęć oraz wideo w galerii i profilu użytkownika
+[33m4b07b80[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Testowe do poprawienia
+[33m07561fd[m Przesyłanie zdjęc na baze danych, zalogowany użytkownik moze przeslać i usunąc zdjęcie
+[33m73f674f[m Dodanie dynamicznej kontroli ACL
+[33m239d47d[m Dodanie: usun konto,zmien hasło,informacje czy i jakie konto jest zalogowane
+[33mf66ad85[m Dodannie przesyłania inf do bazy JWT
+[33m9f9cfa6[m Działające logowanie i hashowanie haseł
+[33m705e588[m Stworzenie wyglądu strony i połączenie go z istniejącymi funkcjami
+[33m9b4b4a3[m[33m ([m[1;31morigin/Grzegorz[m[33m)[m backend + frontend
+[33me6e5563[m Instalacja react i tailwind, stworzenie wstępnego zarysu strony
+[33ma808fe9[m Initial commit

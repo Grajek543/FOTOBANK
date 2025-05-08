@@ -1,22 +1,84 @@
-### AL ###
-#Template for AL projects for Dynamics 365 Business Central
-#launch.json folder
+# === FOTO BANK (FastAPI + React) ===
+
+# Python / backend
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+*.sqlite3
+*.db
+.env
+.venv/
+venv/
+build/
+dist/
+*.log
+
+# FastAPI / media uploads
+backend/media/*.jpg
+backend/media/*.jpeg
+backend/media/*.png
+backend/media/*.mp4
+backend/media/*.mov
+backend/media/*.mkv
+backend/media/thumbs/
+
+# Node.js / frontend
+node_modules/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dist/
+build/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
 .vscode/
-#Cache folder
+.idea/
+
+# Archive / binary
+*.zip
+*.rar
+*.7z
+*.tar.gz
+*.psd
+*.ai
+*.exe
+*.dll
+
+# Git LFS
+.gitattributes
+
+# Coverage / test
+coverage/
+htmlcov/
+.pytest_cache/
+
+
+# === DYNAMICS 365 BUSINESS CENTRAL / AL ===
+
+# AL: launch.json and VS Code settings
+.vscode/
+
+# AL: cache folder
 .alcache/
-#Symbols folder
+
+# AL: downloaded symbols
 .alpackages/
-#Snapshots folder
+
+# AL: object snapshots
 .snapshots/
-#Testing Output folder
+
+# AL: test results
 .output/
-#Extension App-file
-*.app
-#Rapid Application Development File
-rad.json
-#Translation Base-file
-*.g.xlf
-#License-file
-*.flf
-#Test results file
 TestResults.xml
+
+# AL: app packages
+*.app
+
+# AL: RAD / translation / license
+rad.json
+*.g.xlf
+*.flf
