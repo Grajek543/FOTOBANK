@@ -23,8 +23,10 @@ export default function Gallery() {
   if (loading) return <p>Ładowanie galerii…</p>;
   if (!photos.length) return <p>Brak dostępnych zdjęć/filmów</p>;
 
-  const normalize = (path) =>
-    `${API_URL}/${path.replace(/\\\\/g, "/").replace(/\\/g, "/")}`;
+  function normalize(path) {
+  if (!path) return ""; 
+  return path.replace(/\\/g, "/");
+}
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">

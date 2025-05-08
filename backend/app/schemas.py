@@ -59,14 +59,18 @@ class PhotoBase(BaseModel):
 class PhotoCreate(PhotoBase):
     pass            # ⬅️ cokolwiek dodatkowego przy tworzeniu
 
-class PhotoOut(PhotoBase):
+class PhotoOut(BaseModel):
     id: int
-    owner_id: int
-    thumb_path: str | None
-    file_path: str
+    title: str
+    description: str
+    category: str
+    price: float
+    file_url: str
+    thumb_url: str | None = None
 
     class Config:
-        from_attributes = True   # (orm_mode w Pydantic v1)
+        orm_mode = True
+
 
 # ➡️  DODAJ TO:
 class PhotoUpdate(BaseModel):
