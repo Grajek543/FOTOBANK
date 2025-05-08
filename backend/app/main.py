@@ -27,7 +27,11 @@ app.include_router(media.router,   prefix="/media",  tags=["Media"])
 # ──────────────────────────────────────────────────────────
 
 # CORS
-origins = ["http://localhost:3000"]
+# CORS
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000"
+]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -35,6 +39,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 @app.get("/")
 def root():

@@ -8,7 +8,6 @@ export default function Navbar({ isAuthenticated, setIsAuthenticated }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [user, setUser] = useState(null);
-  const [cartCount, setCartCount] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -21,13 +20,6 @@ export default function Navbar({ isAuthenticated, setIsAuthenticated }) {
         })
         .then((res) => setUser(res.data))
         .catch(() => setUser(null));
-
-      axios
-        .get("http://127.0.0.1:8000/cart", {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        .then((res) => setCartCount(res.data.length))
-        .catch(() => setCartCount(0));
     }
   }, [isAuthenticated]);
 
@@ -69,11 +61,13 @@ export default function Navbar({ isAuthenticated, setIsAuthenticated }) {
         <div className="flex items-center space-x-4">
           {isAuthenticated ? (
             <>
-              <button
-                onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="relative focus:outline-none"
-              >
-                <FaUserCircle size={24} />
+              <div className="relative">
+                <button
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                  className="focus:outline-none"
+                >
+                  <FaUserCircle size={24} />
+                </button>
                 {dropdownOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white border rounded shadow-lg z-50">
                     <Link to="/account" className="block px-4 py-2 hover:bg-gray-100">
@@ -82,28 +76,27 @@ export default function Navbar({ isAuthenticated, setIsAuthenticated }) {
                     <Link to="/myphotos" className="block px-4 py-2 hover:bg-gray-100">
                       Moje zdjęcia
                     </Link>
+                    <Link to="/settings" className="block px-4 py-2 hover:bg-gray-100">
+                      Ustawienia
+                    </Link>
                     {user?.role === "admin" && (
                       <Link to="/admin" className="block px-4 py-2 hover:bg-gray-100">
                         Panel admina
                       </Link>
                     )}
-                    <button
+                    <div
                       onClick={handleLogout}
-                      className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+                      role="button"
+                      className="block w-full text-left px-4 py-2 hover:bg-gray-100 cursor-pointer"
                     >
                       Wyloguj się
-                    </button>
+                    </div>
                   </div>
                 )}
-              </button>
+              </div>
 
               <Link to="/cart" className="relative">
                 <FaShoppingCart size={20} />
-                {cartCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full px-1">
-                    {cartCount}
-                  </span>
-                )}
               </Link>
             </>
           ) : (

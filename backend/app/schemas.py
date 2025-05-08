@@ -1,23 +1,22 @@
 from typing import Optional
-from pydantic import BaseModel, Field
-
+from pydantic import BaseModel
 
 # ───────────── USERS ─────────────
 
 class UserRead(BaseModel):
     id: int
     email: str
-    username: str | None = None
-    role: str | None = None  # ← potrzebne do panelu admina
+    username: Optional[str] = None
+    role: Optional[str] = None
 
     class Config:
-        from_attributes = True  # fastapi ≥ 0.100, pydantic ≥ 2
+        orm_mode = True
 
 
 class UserCreate(BaseModel):
     email: str
     password: str
-    username: str | None = None
+    username: Optional[str] = None
 
 
 class UserLogin(BaseModel):
@@ -43,7 +42,7 @@ class PhotoBase(BaseModel):
 
 
 class PhotoCreate(PhotoBase):
-    pass  # ⬅️ możesz dodać więcej pól jeśli będzie potrzeba
+    pass
 
 
 class PhotoUpdate(BaseModel):
@@ -57,8 +56,8 @@ class PhotoOut(BaseModel):
     description: str
     category: str
     price: float
-    file_url: str               # ← do wyświetlania pliku (foto/wideo)
-    thumb_url: str | None = None  # ← miniatura, jeśli istnieje
+    file_url: str
+    thumb_url: Optional[str] = None
 
     class Config:
-        from_attributes = True  # fastapi ≥ 0.100
+        orm_mode = True
