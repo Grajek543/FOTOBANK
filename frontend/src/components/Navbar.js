@@ -7,13 +7,21 @@ import axios from "axios";
 export default function Navbar({ isAuthenticated, setIsAuthenticated }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [user, setUser] = useState(null);
+  const [cartCount, setCartCount] = useState(0);
   const navigate = useNavigate();
 
-  // przykładowe pobranie użytkownika / koszyka
-  const [cartCount, setCartCount] = useState(0);
   useEffect(() => {
     if (isAuthenticated) {
       const token = localStorage.getItem("access_token");
+
+      axios
+        .get("http://127.0.0.1:8000/users/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        .then((res) => setUser(res.data))
+        .catch(() => setUser(null));
+
       axios
         .get("http://127.0.0.1:8000/cart", {
           headers: { Authorization: `Bearer ${token}` },
@@ -26,6 +34,7 @@ export default function Navbar({ isAuthenticated, setIsAuthenticated }) {
   const handleLogout = () => {
     localStorage.removeItem("access_token");
     setIsAuthenticated(false);
+    setUser(null);
     navigate("/login");
   };
 
@@ -66,19 +75,18 @@ export default function Navbar({ isAuthenticated, setIsAuthenticated }) {
               >
                 <FaUserCircle size={24} />
                 {dropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white border rounded shadow-lg">
-                    <Link
-                      to="/account"
-                      className="block px-4 py-2 hover:bg-gray-100"
-                    >
+                  <div className="absolute right-0 mt-2 w-48 bg-white border rounded shadow-lg z-50">
+                    <Link to="/account" className="block px-4 py-2 hover:bg-gray-100">
                       Moje konto
                     </Link>
-                    <Link
-                      to="/myphotos"
-                      className="block px-4 py-2 hover:bg-gray-100"
-                    >
+                    <Link to="/myphotos" className="block px-4 py-2 hover:bg-gray-100">
                       Moje zdjęcia
                     </Link>
+                    {user?.role === "admin" && (
+                      <Link to="/admin" className="block px-4 py-2 hover:bg-gray-100">
+                        Panel admina
+                      </Link>
+                    )}
                     <button
                       onClick={handleLogout}
                       className="block w-full text-left px-4 py-2 hover:bg-gray-100"
@@ -100,10 +108,7 @@ export default function Navbar({ isAuthenticated, setIsAuthenticated }) {
             </>
           ) : (
             <>
-              <Link
-                to="/login"
-                className="px-3 py-1 border rounded hover:bg-gray-100"
-              >
+              <Link to="/login" className="px-3 py-1 border rounded hover:bg-gray-100">
                 Zaloguj
               </Link>
               <Link

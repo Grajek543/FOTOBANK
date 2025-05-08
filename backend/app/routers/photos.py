@@ -23,6 +23,7 @@ IMAGE_TYPES = {"image/jpeg", "image/png"}
 VIDEO_TYPES = {"video/mp4", "video/quicktime", "video/x-matroska"}
 ALLOWED_TYPES: set[str] = IMAGE_TYPES | VIDEO_TYPES
 
+
 def create_thumbnail(src_path: Path, dst_path: Path) -> None:
     try:
         if src_path.suffix.lower() in {".jpg", ".jpeg", ".png"}:
@@ -31,12 +32,24 @@ def create_thumbnail(src_path: Path, dst_path: Path) -> None:
                 im.thumbnail((320, 320))
                 im.save(dst_path, format="JPEG", quality=85)
         else:
+            dst_path = dst_path.with_suffix(".jpg")
             subprocess.run(
-                ["ffmpeg", "-i", str(src_path), "-ss", "00:00:01.000", "-vframes", "1", str(dst_path)],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False
+                [
+                    "ffmpeg",
+                    "-i", str(src_path),
+                    "-ss", "00:00:01.000",   
+                    "-vframes", "1",         
+                    "-vf", "scale=320:-1",   
+                    str(dst_path)
+                ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
             )
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"Błąd przy generowaniu miniatury: {e}")
+
+
 
 def get_db():
     db = SessionLocal()
@@ -45,23 +58,26 @@ def get_db():
     finally:
         db.close()
 
-def build_photo_response(photo: models.Photo) -> dict:
-    return {
-        "id": photo.id,
-        "title": photo.title,
-        "description": photo.description,
-        "category": photo.category,
-        "price": photo.price,
-        "file_url": f"/media/{Path(photo.file_path).name}".replace("\\", "/"),
-        "thumb_url": (
-            f"/media/{Path(photo.thumb_path).name}".replace("\\", "/") if photo.thumb_path else None
-        ),
-        "owner_id": photo.owner_id,
-    }
+
+def build_photo_response(photo: models.Photo) -> schemas.PhotoOut:
+    file_name = Path(photo.file_path).name if photo.file_path else ""
+    thumb_name = f"{Path(file_name).stem}.jpg" if file_name else None
+    return schemas.PhotoOut(
+        id=photo.id,
+        title=photo.title,
+        description=photo.description,
+        category=photo.category,
+        price=photo.price,
+        file_url=f"/media/{file_name}".replace("\\", "/") if file_name else "",
+        thumb_url=f"/media/thumbs/{thumb_name}".replace("\\", "/") if thumb_name else None,
+    )
+
+
 
 router = APIRouter(prefix="/photos", tags=["photos"])
 
-@router.post("/upload")
+
+@router.post("/upload", response_model=schemas.PhotoOut)
 async def upload_photo(
     title: str = Form(...),
     description: str = Form(...),
@@ -99,15 +115,18 @@ async def upload_photo(
 
     return build_photo_response(photo)
 
-@router.get("/")
+
+@router.get("/", response_model=list[schemas.PhotoOut])
 def list_photos(db: Session = Depends(get_db)):
     photos = db.query(models.Photo).all()
     return [build_photo_response(p) for p in photos]
 
-@router.get("/me")
+
+@router.get("/me", response_model=list[schemas.PhotoOut])
 def get_my_photos(user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
     photos = db.query(models.Photo).filter(models.Photo.owner_id == user_id).all()
     return [build_photo_response(p) for p in photos]
+
 
 @router.get("/{photo_id}/file")
 def get_file(photo_id: int, db: Session = Depends(get_db)):
@@ -122,6 +141,7 @@ def get_file(photo_id: int, db: Session = Depends(get_db)):
     media_type, _ = mimetypes.guess_type(str(path))
     return FileResponse(path, media_type=media_type)
 
+
 @router.delete("/{photo_id}", status_code=204)
 def delete_photo(photo_id: int, user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
     photo = db.query(models.Photo).filter(models.Photo.id == photo_id, models.Photo.owner_id == user_id).first()
@@ -135,7 +155,8 @@ def delete_photo(photo_id: int, user_id: int = Depends(get_current_user), db: Se
     db.delete(photo)
     db.commit()
 
-@router.put("/{photo_id}")
+
+@router.put("/{photo_id}", response_model=schemas.PhotoOut)
 def update_photo(
     photo_id: int,
     photo_data: schemas.PhotoUpdate,
@@ -152,11 +173,13 @@ def update_photo(
     db.refresh(photo)
     return build_photo_response(photo)
 
-@router.get("/{photo_id}")
+
+@router.get("/{photo_id}", response_model=schemas.PhotoOut)
 def get_photo(photo_id: int, db: Session = Depends(get_db)):
     photo = db.query(models.Photo).filter(models.Photo.id == photo_id).first()
     if not photo:
         raise HTTPException(404, "Zdjęcie nie znalezione")
     return build_photo_response(photo)
+
 
 router.mount("/media", StaticFiles(directory="media"), name="media")
