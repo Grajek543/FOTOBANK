@@ -4,10 +4,11 @@ import shutil
 import mimetypes
 import subprocess
 
-from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Form
+from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Form, Query
 from fastapi.responses import FileResponse
 from starlette.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 
 from app.database import SessionLocal
 from app.dependencies import get_current_user
@@ -117,8 +118,20 @@ async def upload_photo(
 
 
 @router.get("/", response_model=list[schemas.PhotoOut])
-def list_photos(db: Session = Depends(get_db)):
-    photos = db.query(models.Photo).all()
+def list_photos(
+    q: str = Query(default=None, description="Wyszukiwanie po tytule, opisie lub kategorii"),
+    db: Session = Depends(get_db),
+):
+    query = db.query(models.Photo)
+    if q:
+        query = query.filter(
+            or_(
+                models.Photo.title.ilike(f"%{q}%"),
+                models.Photo.description.ilike(f"%{q}%"),
+                models.Photo.category.ilike(f"%{q}%")
+            )
+        )
+    photos = query.all()
     return [build_photo_response(p) for p in photos]
 
 
