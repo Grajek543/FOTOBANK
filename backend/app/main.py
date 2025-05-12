@@ -1,8 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app import models
 from app.database import engine, Base
-from app.routers import users, photos, media          # ← zostaje
+from app.routers import users, photos         # ← zostaje
 from app.routers.upload_router import router as upload_router   # ← DODAJ
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
@@ -23,7 +24,6 @@ app.include_router(photos.router,  tags=["Photos"])
 # ↘  upload_router też ma prefix="/photos" w definicji
 app.include_router(upload_router,  tags=["Photos"])
 
-app.include_router(media.router,   prefix="/media",  tags=["Media"])
 # ──────────────────────────────────────────────────────────
 
 # CORS
