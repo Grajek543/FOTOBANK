@@ -80,43 +80,59 @@ def build_photo_response(photo: models.Photo) -> schemas.PhotoOut:
 router = APIRouter(prefix="/photos", tags=["photos"])
 
 
-@router.post("/upload", response_model=schemas.PhotoOut)
-async def upload_photo(
-    title: str = Form(...),
-    description: str = Form(...),
-    category: str = Form(...),
-    price: float = Form(...),
-    file: UploadFile = File(...),
-    user_id: int = Depends(get_current_user),
-    db: Session = Depends(get_db),
+@router.post(
+    "/upload",
+    response_model=list[schemas.PhotoOut],   # <─ zwracamy listę
+)
+async def upload_photos(
+    # ➊ — pola wspólne dla wszystkich plików…
+    category: str  = Form(...),
+    price:    float = Form(...),
+    # ➋ — pola, które mogą różnić się per-plik (title, description) przyślemy jako listy
+    titles:        list[str] = Form(...),      # np. ["Zima", "Wiosna", …]
+    descriptions:  list[str] = Form(...),
+    # ➌ — wiele plików naraz
+    files: list[UploadFile] = File(...),
+    user_id: int             = Depends(get_current_user),
+    db:      Session         = Depends(get_db),
 ):
-    if file.content_type not in ALLOWED_TYPES:
-        raise HTTPException(400, "Niedozwolony typ pliku")
+    if len(files) != len(titles) or len(files) != len(descriptions):
+        raise HTTPException(400, "Liczba tytułów/opisów musi odpowiadać liczbie plików")
 
-    ext = Path(file.filename).suffix.lower()
-    file_name = f"{uuid4().hex}{ext}"
-    file_full_path = MEDIA_DIR / file_name
+    output: list[schemas.PhotoOut] = []
+    for i, file in enumerate(files):
+        if file.content_type not in ALLOWED_TYPES:
+            continue   # lub HTTPException
 
-    with file_full_path.open("wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+        ext = Path(file.filename).suffix.lower()
+        file_name = f"{uuid4().hex}{ext}"
+        file_full_path = MEDIA_DIR / file_name
 
-    thumb_full_path = THUMBS_DIR / f"{file_full_path.stem}.jpg"
-    create_thumbnail(file_full_path, thumb_full_path)
+        # zapis pliku
+        with file_full_path.open("wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
 
-    photo = models.Photo(
-        title=title,
-        description=description,
-        category=category,
-        price=price,
-        file_path=str(file_full_path),
-        thumb_path=str(thumb_full_path) if thumb_full_path.exists() else None,
-        owner_id=user_id,
-    )
-    db.add(photo)
+        # miniatura
+        thumb_full_path = THUMBS_DIR / f"{file_full_path.stem}.jpg"
+        create_thumbnail(file_full_path, thumb_full_path)
+
+        # wpis w bazie
+        photo = models.Photo(
+            title=titles[i],
+            description=descriptions[i],
+            category=category,
+            price=price,
+            file_path=str(file_full_path),
+            thumb_path=str(thumb_full_path) if thumb_full_path.exists() else None,
+            owner_id=user_id,
+        )
+        db.add(photo)
+        db.flush()      # trzymamy w jednej transakcji
+
+        output.append(build_photo_response(photo))
+
     db.commit()
-    db.refresh(photo)
-
-    return build_photo_response(photo)
+    return output
 
 
 @router.get("/", response_model=list[schemas.PhotoOut])
