@@ -107,9 +107,11 @@ function MyPhotos() {
   };
 
   const normalize = (path) => {
-    if (!path) return "";
-    return `${API_URL}${path.startsWith("/") ? "" : "/"}${path.replace(/\\/g, "/")}`;
-  };
+  if (!path) return "";
+  // jeśli back-end zwrócił już "http://…" – zostaw bez zmian
+  if (/^https?:\/\//i.test(path)) return path.replace(/\\/g, "/");
+  return `${API_URL}${path.startsWith("/") ? "" : "/"}${path.replace(/\\/g, "/")}`;
+ };
 
   return (
     <div className="p-6">

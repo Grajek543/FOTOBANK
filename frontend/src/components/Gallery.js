@@ -32,8 +32,13 @@ export default function Gallery() {
   if (loading) return <p>Ładowanie galerii…</p>;
   if (!photos.length) return <p>Brak wyników wyszukiwania.</p>;
 
-  const normalize = (path) =>
-    path ? `${API_URL}${path.startsWith("/") ? "" : "/"}${path.replace(/\\/g, "/")}` : "";
+  const normalize = (path) => {
+   if (!path) return "";
+   // jeśli już jest absolutny, zwróć bez zmian
+   if (/^https?:\/\//i.test(path)) return path.replace(/\\/g, "/");
+   // w przeciwnym razie doklej host backendu
+   return `${API_URL}${path.startsWith("/") ? "" : "/"}${path.replace(/\\/g, "/")}`;
+  };
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">

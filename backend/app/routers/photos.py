@@ -23,7 +23,7 @@ THUMBS_DIR.mkdir(exist_ok=True)
 IMAGE_TYPES = {"image/jpeg", "image/png"}
 VIDEO_TYPES = {"video/mp4", "video/quicktime", "video/x-matroska"}
 ALLOWED_TYPES: set[str] = IMAGE_TYPES | VIDEO_TYPES
-
+API_BASE = "http://127.0.0.1:8000"   # dev value; move to settings later
 
 def create_thumbnail(src_path: Path, dst_path: Path) -> None:
     try:
@@ -61,6 +61,7 @@ def get_db():
 
 
 def build_photo_response(photo: models.Photo) -> schemas.PhotoOut:
+    base = "http://127.0.0.1:8000"
     file_name = Path(photo.file_path).name if photo.file_path else ""
     thumb_name = f"{Path(file_name).stem}.jpg" if file_name else None
     return schemas.PhotoOut(
@@ -69,8 +70,9 @@ def build_photo_response(photo: models.Photo) -> schemas.PhotoOut:
         description=photo.description,
         category=photo.category,
         price=photo.price,
-        file_url=f"/media/{file_name}".replace("\\", "/") if file_name else "",
-        thumb_url=f"/media/thumbs/{thumb_name}".replace("\\", "/") if thumb_name else None,
+        owner_id=photo.owner_id,
+        file_url=f"{API_BASE}/media/{file_name}" if file_name else "",
+        thumb_url=f"{API_BASE}/media/thumbs/{thumb_name}" if thumb_name else None,
     )
 
 

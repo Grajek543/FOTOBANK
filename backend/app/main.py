@@ -22,7 +22,7 @@ app.include_router(users.router,   prefix="/users",  tags=["Users"])
 app.include_router(photos.router,  tags=["Photos"])
 
 # ↘  upload_router też ma prefix="/photos" w definicji
-app.include_router(upload_router,  tags=["Photos"])
+
 
 # ──────────────────────────────────────────────────────────
 

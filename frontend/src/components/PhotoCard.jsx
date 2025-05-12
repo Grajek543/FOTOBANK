@@ -5,6 +5,8 @@ export default function PhotoCard({ photo, onClick }) {
   const thumbUrl = photo.thumb_path
         ? `/photos/${photo.thumb_path.replace(/\\/g, "/")}`   // Windows \ -> /
         : "/placeholder.png";
+  const fileUrl  = photo.file_url;
+  const thumbUrl = photo.thumb_url || photo.file_url;   // miniatura albo pełny plik
 
   return (
     <div onClick={onClick} className="cursor-pointer">

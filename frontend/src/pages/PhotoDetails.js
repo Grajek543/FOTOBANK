@@ -26,9 +26,10 @@ function PhotoDetails() {
   const isVideo = /\.(mp4|mov|mkv)$/i.test(photo.file_url);
 
   const normalize = (path) => {
-    if (!path) return "";
-    return `${API_URL}${path.startsWith("/") ? "" : "/"}${path.replace(/\\/g, "/")}`;
-  };
+   if (!path) return "";
+   if (/^https?:\/\//i.test(path)) return path.replace(/\\/g, "/");
+  return `${API_URL}${path.startsWith("/") ? "" : "/"}${path.replace(/\\/g, "/")}`;
+ };
 
   return (
     <div className="p-6 flex flex-col items-center">

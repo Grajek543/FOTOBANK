@@ -67,6 +67,8 @@ class PhotoOut(BaseModel):
     thumb_path: Optional[str] = None
     owner_id: int
     owner_username: Optional[str] = None
+    file_url: str | None = None   # ← nowe
+    thumb_url: str | None = None  # ← nowe
 
     class Config:
         from_attributes = True
