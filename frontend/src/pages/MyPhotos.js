@@ -1,68 +1,73 @@
 // src/pages/MyPhotos.js
 import React, { useState, useEffect, useCallback } from "react";
-import axios from "axios";
-import PhotoCard from "../components/PhotoCard";
+import axios                      from "axios";
+import PhotoCard                  from "../components/PhotoCard";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
 export default function MyPhotos() {
-  const [photos, setPhotos] = useState([]);
-  const [files, setFiles]   = useState([]);
-  const [category, setCategory] = useState("");
-  const [price, setPrice]       = useState(0);
+  /* --- STANY ------------------------------------------------------- */
+  const [photos,    setPhotos]    = useState([]);
+  const [files,     setFiles]     = useState([]);
+  const [category,  setCategory]  = useState("");
+  const [price,     setPrice]     = useState("0");   // string → łatwiej z input number
   const token = localStorage.getItem("access_token");
 
-  /* ---- POBIERANIE LISTY -------------------------------------------- */
+  /* --- POBIERANIE LISTY UŻYTKOWNIKA -------------------------------- */
   const fetchPhotos = useCallback(() => {
+    if (!token) return;                               // brak tokenu → brak zapytania
     axios
       .get(`${API_URL}/photos/me`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => setPhotos(res.data))
-      .catch((err) => console.error(err));
+      .catch(console.error);
   }, [token]);
 
-  useEffect(() => {
-    fetchPhotos();
-  }, [fetchPhotos]);
+  useEffect(fetchPhotos, [fetchPhotos]);
 
-  /* ---- WYSYŁANIE WIELU PLIKÓW -------------------------------------- */
+  /* --- WYSYŁANIE WIELU PLIKÓW ------------------------------------- */
   const uploadMany = async (e) => {
-    e.preventDefault();
-    if (!files.length) return;
+  e.preventDefault();
+  if (!files.length || !token) return;
 
-    // wysyłamy każdy plik oddzielnie
-    try {
-      for (const file of files) {
-        const form = new FormData();
-        form.append("title", file.name);
-        form.append("description", "");
-        form.append("category", category);
-        form.append("price", price);
-        form.append("file", file);
+  try {
+    const form = new FormData();
 
-        await axios.post(`${API_URL}/photos/upload`, form, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        });
-      }
-      setFiles([]);
-      fetchPhotos();
-    } catch (err) {
-      console.error(err);
-      alert("Błąd podczas uploadu.");
-    }
-  };
+    // ← jedna iteracja, ale 3× append na te same klucze (tworzą listy)
+    files.forEach((f) => {
+      form.append("files", f);           // lista UploadFile
+      form.append("titles", f.name);     // lista str
+      form.append("descriptions", "");   // lista str (puste)
+    });
 
-  /* ---- UI ----------------------------------------------------------- */
+    /* jeśli backend wymaga też kategorii / ceny w liczbie pojedynczej,
+       zostaw tak – jeśli w liczbie mnogiej → form.append("categories", …) itp. */
+    form.append("category", category);
+    form.append("price",    price || 0);
+
+    await axios.post(`${API_URL}/photos/upload`, form, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    setFiles([]);
+    fetchPhotos();
+  } catch (err) {
+    console.error("uploadMany –", err.response?.status, err.response?.data);
+    alert("Błąd uploadu.");
+  }
+};
+
+  /* --- UI ---------------------------------------------------------- */
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-8">
       <h1 className="text-3xl font-bold">Moje zdjęcia</h1>
 
       {/* formularz uploadu */}
-      <form onSubmit={uploadMany} className="border p-4 rounded-xl space-y-4 shadow">
+      <form
+        onSubmit={uploadMany}
+        className="border p-4 rounded-xl space-y-4 shadow"
+      >
         <input
           type="file"
           multiple
@@ -90,7 +95,7 @@ export default function MyPhotos() {
           disabled={!files.length}
           className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg disabled:opacity-50"
         >
-          Wyślij&nbsp;{files.length ? `(${files.length})` : null}
+          Wyślij{files.length ? ` (${files.length})` : ""}
         </button>
       </form>
 
