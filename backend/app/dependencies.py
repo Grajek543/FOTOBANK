@@ -49,3 +49,15 @@ def check_admin(
             detail="Brak uprawnień (tylko administrator)."
         )
     return user
+
+def ensure_not_banned(
+    current_user_id: int = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.id == current_user_id).first()
+    if user and user.banned:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Konto jest zablokowane"
+        )
+    return user.id
