@@ -1,74 +1,55 @@
-# app/routers/photos.py – rozszerzona wersja z obsługą wideo i miniatur
-
 from uuid import uuid4
 from pathlib import Path
 import shutil
 import mimetypes
 import subprocess
 
-from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Form
+from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Form, Query
 from fastapi.responses import FileResponse
 from starlette.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 
 from app.database import SessionLocal
-from app.dependencies import get_current_user  # ⇦ zwraca ID użytkownika (int)
+from app.dependencies import get_current_user
 from app import models, schemas
 from app.utils.thumbnails import create_video_thumb, create_image_thumb
 
-# ---------------------------------------------------------------------------
-# Stałe / katalogi
-# ---------------------------------------------------------------------------
 MEDIA_DIR: Path = Path("media")
 THUMBS_DIR: Path = MEDIA_DIR / "thumbs"
 MEDIA_DIR.mkdir(exist_ok=True)
 THUMBS_DIR.mkdir(exist_ok=True)
 
 IMAGE_TYPES = {"image/jpeg", "image/png"}
-VIDEO_TYPES = {
-    "video/mp4",
-    "video/quicktime",  # mov
-    "video/x-matroska",  # mkv
-}
+VIDEO_TYPES = {"video/mp4", "video/quicktime", "video/x-matroska"}
 ALLOWED_TYPES: set[str] = IMAGE_TYPES | VIDEO_TYPES
-
-# ---------------------------------------------------------------------------
-# Pomocnicze
-# ---------------------------------------------------------------------------
+API_BASE = "http://127.0.0.1:8000"   # dev value; move to settings later
 
 def create_thumbnail(src_path: Path, dst_path: Path) -> None:
-    """Tworzy miniaturę JPG.
-
-    * Dla zdjęć – Pillow.
-    * Dla wideo – ffmpeg (pierwsza klatka w ~ 1 s)."""
-
     try:
         if src_path.suffix.lower() in {".jpg", ".jpeg", ".png"}:
-            from PIL import Image  # pillow
-
+            from PIL import Image
             with Image.open(src_path) as im:
                 im.thumbnail((320, 320))
                 im.save(dst_path, format="JPEG", quality=85)
-        else:  # wideo
-            # wymaga ffmpeg w PATH – wyciągamy 1. klatkę po 1 sekundzie
+        else:
+            dst_path = dst_path.with_suffix(".jpg")
             subprocess.run(
                 [
                     "ffmpeg",
-                    "-i",
-                    str(src_path),
-                    "-ss",
-                    "00:00:01.000",
-                    "-vframes",
-                    "1",
-                    str(dst_path),
+                    "-i", str(src_path),
+                    "-ss", "00:00:01.000",   
+                    "-vframes", "1",         
+                    "-vf", "scale=320:-1",   
+                    str(dst_path)
                 ],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 check=False,
             )
-    except Exception:
-        # ignorujemy błędy – miniatura opcjonalna
-        pass
+    except Exception as e:
+        print(f"Błąd przy generowaniu miniatury: {e}")
+
 
 
 def get_db():
@@ -78,74 +59,106 @@ def get_db():
     finally:
         db.close()
 
-# ---------------------------------------------------------------------------
-# Router
-# ---------------------------------------------------------------------------
+
+def build_photo_response(photo: models.Photo) -> schemas.PhotoOut:
+    base = "http://127.0.0.1:8000"
+    file_name = Path(photo.file_path).name if photo.file_path else ""
+    thumb_name = f"{Path(file_name).stem}.jpg" if file_name else None
+    return schemas.PhotoOut(
+        id=photo.id,
+        title=photo.title,
+        description=photo.description,
+        category=photo.category,
+        price=photo.price,
+        owner_id=photo.owner_id,
+        file_url=f"{API_BASE}/media/{file_name}" if file_name else "",
+        thumb_url=f"{API_BASE}/media/thumbs/{thumb_name}" if thumb_name else None,
+    )
+
+
+
 router = APIRouter(prefix="/photos", tags=["photos"])
 
-# ----------------------------------------
-# UPLOAD
-# ----------------------------------------
-@router.post("/upload", response_model=schemas.PhotoOut)
-async def upload_photo(
-    title: str = Form(...),
-    description: str = Form(...),
-    category: str = Form(...),
-    price: float = Form(...),
-    file: UploadFile = File(...),
-    user_id: int = Depends(get_current_user),  # ⇦ ID użyt.
+
+@router.post(
+    "/upload",
+    response_model=list[schemas.PhotoOut],   # <─ zwracamy listę
+)
+async def upload_photos(
+    # ➊ — pola wspólne dla wszystkich plików…
+    category: str  = Form(...),
+    price:    float = Form(...),
+    # ➋ — pola, które mogą różnić się per-plik (title, description) przyślemy jako listy
+    titles:        list[str] = Form(...),      # np. ["Zima", "Wiosna", …]
+    descriptions:  list[str] = Form(...),
+    # ➌ — wiele plików naraz
+    files: list[UploadFile] = File(...),
+    user_id: int             = Depends(get_current_user),
+    db:      Session         = Depends(get_db),
+):
+    if len(files) != len(titles) or len(files) != len(descriptions):
+        raise HTTPException(400, "Liczba tytułów/opisów musi odpowiadać liczbie plików")
+
+    output: list[schemas.PhotoOut] = []
+    for i, file in enumerate(files):
+        if file.content_type not in ALLOWED_TYPES:
+            continue   # lub HTTPException
+
+        ext = Path(file.filename).suffix.lower()
+        file_name = f"{uuid4().hex}{ext}"
+        file_full_path = MEDIA_DIR / file_name
+
+        # zapis pliku
+        with file_full_path.open("wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        # miniatura
+        thumb_full_path = THUMBS_DIR / f"{file_full_path.stem}.jpg"
+        create_thumbnail(file_full_path, thumb_full_path)
+
+        # wpis w bazie
+        photo = models.Photo(
+            title=titles[i],
+            description=descriptions[i],
+            category=category,
+            price=price,
+            file_path=str(file_full_path),
+            thumb_path=str(thumb_full_path) if thumb_full_path.exists() else None,
+            owner_id=user_id,
+        )
+        db.add(photo)
+        db.flush()      # trzymamy w jednej transakcji
+
+        output.append(build_photo_response(photo))
+
+    db.commit()
+    return output
+
+
+@router.get("/", response_model=list[schemas.PhotoOut])
+def list_photos(
+    q: str = Query(default=None, description="Wyszukiwanie po tytule, opisie lub kategorii"),
     db: Session = Depends(get_db),
 ):
-    # 1️⃣ walidacja typu MIME
-    if file.content_type not in ALLOWED_TYPES:
-        raise HTTPException(400, "Niedozwolony typ pliku")
+    query = db.query(models.Photo)
+    if q:
+        query = query.filter(
+            or_(
+                models.Photo.title.ilike(f"%{q}%"),
+                models.Photo.description.ilike(f"%{q}%"),
+                models.Photo.category.ilike(f"%{q}%")
+            )
+        )
+    photos = query.all()
+    return [build_photo_response(p) for p in photos]
 
-    # 2️⃣ nazwa i pełna ścieżka pliku
-    ext = Path(file.filename).suffix.lower()
-    file_name = f"{uuid4().hex}{ext}"
-    file_full_path = MEDIA_DIR / file_name
 
-    # 3️⃣ zapis
-    with file_full_path.open("wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    # 4️⃣ miniatura (tylko jeśli możemy ją wygenerować)
-    thumb_full_path = THUMBS_DIR / f"{file_full_path.stem}.jpg"
-    create_thumbnail(file_full_path, thumb_full_path)
-
-    # 5️⃣ rekord w bazie
-    photo = models.Photo(
-        title=title,
-        description=description,
-        category=category,
-        price=price,
-        file_path=str(file_full_path),
-        thumb_path=str(thumb_full_path) if thumb_full_path.exists() else None,
-        owner_id=user_id,
-    )
-    db.add(photo)
-    db.commit()
-    db.refresh(photo)
-
-    return photo  # → zgodne ze schemas.PhotoOut
-
-# ----------------------------------------
-# LISTA WSZYSTKICH
-# ----------------------------------------
-@router.get("/", response_model=list[schemas.PhotoOut])
-def list_photos(db: Session = Depends(get_db)):
-    return db.query(models.Photo).all()
-
-# ----------------------------------------
-# MOJE ZDJĘCIA / FILMY
-# ----------------------------------------
 @router.get("/me", response_model=list[schemas.PhotoOut])
 def get_my_photos(user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
-    return db.query(models.Photo).filter(models.Photo.owner_id == user_id).all()
+    photos = db.query(models.Photo).filter(models.Photo.owner_id == user_id).all()
+    return [build_photo_response(p) for p in photos]
 
-# ----------------------------------------
-# POJEDYNCZY PLIK
-# ----------------------------------------
+
 @router.get("/{photo_id}/file")
 def get_file(photo_id: int, db: Session = Depends(get_db)):
     photo = db.get(models.Photo, photo_id)
@@ -159,9 +172,7 @@ def get_file(photo_id: int, db: Session = Depends(get_db)):
     media_type, _ = mimetypes.guess_type(str(path))
     return FileResponse(path, media_type=media_type)
 
-# ----------------------------------------
-# DELETE / PUT / GET (detale)
-# ----------------------------------------
+
 @router.delete("/{photo_id}", status_code=204)
 def delete_photo(photo_id: int, user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
     photo = db.query(models.Photo).filter(models.Photo.id == photo_id, models.Photo.owner_id == user_id).first()
@@ -191,7 +202,7 @@ def update_photo(
     photo.description = photo_data.description
     db.commit()
     db.refresh(photo)
-    return photo
+    return build_photo_response(photo)
 
 
 @router.get("/{photo_id}", response_model=schemas.PhotoOut)
@@ -199,9 +210,7 @@ def get_photo(photo_id: int, db: Session = Depends(get_db)):
     photo = db.query(models.Photo).filter(models.Photo.id == photo_id).first()
     if not photo:
         raise HTTPException(404, "Zdjęcie nie znalezione")
-    return photo
+    return build_photo_response(photo)
 
-# ---------------------------------------------------------------------------
-# Statyczne
-# ---------------------------------------------------------------------------
+
 router.mount("/media", StaticFiles(directory="media"), name="media")

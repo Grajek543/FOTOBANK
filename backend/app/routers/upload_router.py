@@ -99,7 +99,7 @@ router.mount("/media", StaticFiles(directory="media"), name="media")
 @router.get("/stream/{photo_id}")
 def stream_video(
     photo_id: int,
-    range_header: Annotated[str | None, Header(convert_underscores=False, alias="Range")] = None,
+    range_header: str | None = Header(default=None, convert_underscores=False, alias="Range"),
     db: Session = Depends(get_db),
 ):
     """Obsługa HTTP Range + streaming MP4/MOV."""

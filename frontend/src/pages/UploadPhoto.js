@@ -1,121 +1,107 @@
-// src/pages/UploadPhoto.js
-import React, { useState } from "react";
-import { uploadFileInChunks } from "../utils/chunkUpload";
+import { useState, useRef } from "react";
+import axios from "../api/axios";          // axios instance z tokenem i baseURL
+import uploadFileInChunks from "../utils/chunkUpload"; // funkcja do wysyłki na kawałki
 
-function UploadPhoto() {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+/**
+ * Komponent jednego ekranu – masowy upload zdjęć/wideo z paskami postępu.
+ */
+export default function UploadPhoto() {
+  const [files, setFiles] = useState([]);
   const [category, setCategory] = useState("");
-  const [price, setPrice] = useState(0.0);
-  const [file, setFile] = useState(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [price, setPrice] = useState(0);
+  const [progress, setProgress] = useState({});  // { filename: pct }
+  const inputRef = useRef(null);
 
-  const handleUpload = async (e) => {
-    e.preventDefault();
-    const token = localStorage.getItem("access_token");
-    if (!token) {
-      alert("Brak tokenu! Zaloguj się, aby przesłać plik.");
-      return;
-    }
+  /* ---------------------------- helpers ---------------------------- */
+  const handleSelect = (e) => {
+    setFiles([...e.target.files]);
+    setProgress({});
+  };
 
-    if (!file) {
-      alert("Wybierz plik!");
-      return;
-    }
+  const handleUpload = async () => {
+    if (!files.length) return;
 
     try {
-      await uploadFileInChunks(
-        file,
-        {
-          title,
-          description,
+      for (const file of files) {
+        // local progress updater
+        const onChunkProgress = (pct) =>
+          setProgress((prev) => ({ ...prev, [file.name]: pct }));
+
+        // wysyłka w kawałkach (opcjonalnie) – ZAMIEN na prosty axios.post jeśli nie potrzebujesz chunków
+        await uploadFileInChunks(file, {
+          title: file.name,
+          description: "",
           category,
           price,
           media_type: file.type.startsWith("image") ? "image" : "video",
-        },
-        token
-      );
-      alert("Plik przesłany!");
-      setUploadProgress(0);
-      setFile(null);
-      setTitle("");
-      setDescription("");
-      setCategory("");
-      setPrice(0.0);
+        }, null, onChunkProgress);
+      }
+
+      alert("Wysłano wszystkie pliki!");
+      setFiles([]);
+      setProgress({});
+      if (inputRef.current) inputRef.current.value = "";
     } catch (err) {
       console.error(err);
-      alert("Błąd podczas wysyłania pliku.");
+      alert("Błąd podczas przesyłania plików.");
     }
   };
 
+  /* ----------------------------- render ----------------------------- */
   return (
-    <div className="min-h-screen p-8">
-      <h2 className="text-2xl font-bold mb-6">Prześlij plik (zdjęcie lub wideo)</h2>
-      <form onSubmit={handleUpload} className="space-y-4 max-w-md mx-auto">
-        <div>
-          <label className="block text-gray-700 mb-1">Tytuł:</label>
+    <div className="max-w-3xl mx-auto p-6 space-y-6">
+      <h1 className="text-3xl font-bold mb-4">Dodaj zdjęcia / wideo</h1>
+
+      <div className="space-y-4 border p-4 rounded-xl shadow">
+        <input
+          ref={inputRef}
+          type="file"
+          multiple
+          accept="image/*,video/*"
+          onChange={handleSelect}
+          className="w-full border p-2 rounded-lg"
+        />
+
+        <div className="flex gap-4">
           <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="border rounded w-full px-3 py-2"
-          />
-        </div>
-        <div>
-          <label className="block text-gray-700 mb-1">Opis:</label>
-          <input
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="border rounded w-full px-3 py-2"
-          />
-        </div>
-        <div>
-          <label className="block text-gray-700 mb-1">Kategoria:</label>
-          <input
+            type="text"
+            placeholder="Kategoria"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            className="border rounded w-full px-3 py-2"
+            className="flex-1 border p-2 rounded-lg"
           />
-        </div>
-        <div>
-          <label className="block text-gray-700 mb-1">Cena:</label>
           <input
             type="number"
+            min="0"
             step="0.01"
+            placeholder="Cena"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
-            className="border rounded w-full px-3 py-2"
+            className="w-32 border p-2 rounded-lg"
           />
         </div>
-        <div>
-          <label className="block text-gray-700 mb-1">Plik (JPG/PNG/MP4):</label>
-          <input
-            type="file"
-            accept="image/*,video/*"
-            onChange={(e) => setFile(e.target.files[0])}
-            className="border rounded w-full px-3 py-2"
-          />
-        </div>
-        <button
-          type="submit"
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
-        >
-          Wyślij
-        </button>
-      </form>
 
-      {uploadProgress > 0 && (
-        <div className="mt-6 max-w-md mx-auto">
-          <div>Wysyłanie: {uploadProgress}%</div>
-          <div className="w-full bg-gray-200 rounded h-2">
-            <div
-              className="bg-blue-600 h-2 rounded"
-              style={{ width: `${uploadProgress}%` }}
-            ></div>
+        <button
+          onClick={handleUpload}
+          disabled={!files.length}
+          className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg disabled:opacity-50"
+        >
+          {files.length ? `Wyślij (${files.length})` : "Wybierz pliki"}
+        </button>
+
+        {/* lista postępu */}
+        {files.map((f) => (
+          <div key={f.name} className="space-y-1">
+            <span className="text-sm">{f.name}</span>
+            <div className="w-full h-2 bg-gray-200 rounded">
+              <div
+                className="h-2 bg-blue-600 rounded"
+                style={{ width: `${progress[f.name] || 0}%` }}
+              />
+            </div>
           </div>
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   );
 }
-
-export default UploadPhoto;

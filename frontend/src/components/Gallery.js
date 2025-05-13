@@ -1,15 +1,24 @@
-// src/components/Gallery.js
 import React, { useState, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
 export default function Gallery() {
   const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const location = useLocation();
 
   useEffect(() => {
-    fetch(`${API_URL}/photos/`)
-      .then((r) => r.json())
+    const queryParams = new URLSearchParams(location.search);
+    const q = queryParams.get("q") || "";
+    console.log("Zapytanie z URL:", q);
+
+    setLoading(true);
+    fetch(`${API_URL}/photos/?q=${encodeURIComponent(q)}`)
+      .then((r) => {
+        if (!r.ok) throw new Error("Błąd zapytania: " + r.status);
+        return r.json();
+      })
       .then((data) => {
         setPhotos(data);
         setLoading(false);
@@ -18,44 +27,47 @@ export default function Gallery() {
         console.error("Fetch error:", err);
         setLoading(false);
       });
-  }, []);
+  }, [location.search]); // ← reaguje na ?q=
 
   if (loading) return <p>Ładowanie galerii…</p>;
-  if (!photos.length) return <p>Brak dostępnych zdjęć/filmów</p>;
+  if (!photos.length) return <p>Brak wyników wyszukiwania.</p>;
 
-  const normalize = (path) =>
-    `${API_URL}/${path.replace(/\\\\/g, "/").replace(/\\/g, "/")}`;
+  const normalize = (path) => {
+   if (!path) return "";
+   // jeśli już jest absolutny, zwróć bez zmian
+   if (/^https?:\/\//i.test(path)) return path.replace(/\\/g, "/");
+   // w przeciwnym razie doklej host backendu
+   return `${API_URL}${path.startsWith("/") ? "" : "/"}${path.replace(/\\/g, "/")}`;
+  };
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
       {photos.map((p) => {
-        const isVideo = /\.(mp4|mov)$/i.test(p.file_path);
+        const isVideo = /\.(mp4|mov|mkv)$/i.test(p.file_url);
         return (
-          <div key={p.id} className="bg-white rounded shadow overflow-hidden">
+          <Link
+            to={`/photo/${p.id}`}
+            key={p.id}
+            className="block bg-white rounded shadow overflow-hidden hover:shadow-md transition"
+          >
             {isVideo ? (
-              <video
-                controls
-                className="w-full h-48 object-cover"
-                poster={p.thumb_path ? normalize(p.thumb_path) : undefined}
-              >
-                <source
-                  src={normalize(p.file_path)}
-                  type="video/mp4"
-                />
+              <video controls className="w-full h-48 object-cover">
+                <source src={normalize(p.file_url)} type="video/mp4" />
                 Twoja przeglądarka nie wspiera wideo.
               </video>
             ) : (
               <img
                 className="w-full h-48 object-cover"
-                src={normalize(p.thumb_path || p.file_path)}
+                src={normalize(p.thumb_url || p.file_url)}
                 alt={p.title}
               />
             )}
             <div className="p-2">
               <h3 className="font-semibold">{p.title}</h3>
               <p className="text-sm text-gray-600">{p.category}</p>
+              {isVideo && <p className="text-xs text-blue-500">[Wideo]</p>}
             </div>
-          </div>
+          </Link>
         );
       })}
     </div>

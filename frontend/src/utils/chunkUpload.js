@@ -28,3 +28,4 @@ export async function uploadFileInChunks(file, meta, token) {
     });
   }
 }
+export default uploadFileInChunks;

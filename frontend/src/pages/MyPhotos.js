@@ -1,242 +1,110 @@
 // src/pages/MyPhotos.js
-import React, { useEffect, useState } from "react";
-import axios from "axios";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect, useCallback } from "react";
+import axios                      from "axios";
+import PhotoCard                  from "../components/PhotoCard";
 
-function MyPhotos() {
-  const [photos, setPhotos] = useState([]);
-  const [file, setFile] = useState(null);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("");
-  const [price, setPrice] = useState(0.0);
-  const [editingPhotoId, setEditingPhotoId] = useState(null);
-  const [editedTitle, setEditedTitle] = useState("");
-  const [editedDescription, setEditedDescription] = useState("");
+const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
+export default function MyPhotos() {
+  /* --- STANY ------------------------------------------------------- */
+  const [photos,    setPhotos]    = useState([]);
+  const [files,     setFiles]     = useState([]);
+  const [category,  setCategory]  = useState("");
+  const [price,     setPrice]     = useState("0");   // string → łatwiej z input number
   const token = localStorage.getItem("access_token");
 
-  useEffect(() => {
-    fetchPhotos();
-  }, []);
-
-  const fetchPhotos = () => {
+  /* --- POBIERANIE LISTY UŻYTKOWNIKA -------------------------------- */
+  const fetchPhotos = useCallback(() => {
+    if (!token) return;                               // brak tokenu → brak zapytania
     axios
-      .get("http://localhost:8000/photos/me", {
+      .get(`${API_URL}/photos/me`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => setPhotos(res.data))
-      .catch((err) => console.error(err));
-  };
+      .catch(console.error);
+  }, [token]);
 
-  const handleUpload = (e) => {
-    e.preventDefault();
-    if (!file) {
-      alert("Wybierz plik!");
-      return;
-    }
+  useEffect(fetchPhotos, [fetchPhotos]);
 
-    const formData = new FormData();
-    formData.append("title", title);
-    formData.append("description", description);
-    formData.append("category", category);
-    formData.append("price", price);
-    formData.append("file", file);
+  /* --- WYSYŁANIE WIELU PLIKÓW ------------------------------------- */
+  const uploadMany = async (e) => {
+  e.preventDefault();
+  if (!files.length || !token) return;
 
-    axios
-      .post("http://localhost:8000/photos/upload", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-          Authorization: `Bearer ${token}`,
-        },
-      })
-      .then(() => {
-        alert("Plik dodany!");
-        setFile(null);
-        setTitle("");
-        setDescription("");
-        setCategory("");
-        setPrice(0.0);
-        fetchPhotos();
-      })
-      .catch((err) => {
-        console.error(err);
-        alert("Błąd dodawania pliku.");
-      });
-  };
+  try {
+    const form = new FormData();
 
-  const handleEdit = (photoId) => {
-    axios
-      .put(
-        `http://localhost:8000/photos/${photoId}`,
-        {
-          title: editedTitle,
-          description: editedDescription,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      )
-      .then(() => {
-        alert("Zaktualizowano!");
-        setEditingPhotoId(null);
-        fetchPhotos();
-      })
-      .catch((err) => {
-        console.error(err);
-        alert("Błąd podczas edycji.");
-      });
-  };
+    // ← jedna iteracja, ale 3× append na te same klucze (tworzą listy)
+    files.forEach((f) => {
+      form.append("files", f);           // lista UploadFile
+      form.append("titles", f.name);     // lista str
+      form.append("descriptions", "");   // lista str (puste)
+    });
 
-  const handleDelete = (photoId) => {
-    if (window.confirm("Na pewno chcesz usunąć ten plik?")) {
-      axios
-        .delete(`http://localhost:8000/photos/${photoId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        .then(() => {
-          alert("Plik usunięty!");
-          fetchPhotos();
-        })
-        .catch((err) => {
-          console.error(err);
-          alert("Błąd podczas usuwania.");
-        });
-    }
-  };
+    /* jeśli backend wymaga też kategorii / ceny w liczbie pojedynczej,
+       zostaw tak – jeśli w liczbie mnogiej → form.append("categories", …) itp. */
+    form.append("category", category);
+    form.append("price",    price || 0);
 
+    await axios.post(`${API_URL}/photos/upload`, form, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    setFiles([]);
+    fetchPhotos();
+  } catch (err) {
+    console.error("uploadMany –", err.response?.status, err.response?.data);
+    alert("Błąd uploadu.");
+  }
+};
+
+  /* --- UI ---------------------------------------------------------- */
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-6">Twoje pliki</h2>
+    <div className="max-w-6xl mx-auto p-6 space-y-8">
+      <h1 className="text-3xl font-bold">Moje zdjęcia</h1>
 
-      <form onSubmit={handleUpload} className="space-y-4 mb-10 max-w-md">
-        <div>
+      {/* formularz uploadu */}
+      <form
+        onSubmit={uploadMany}
+        className="border p-4 rounded-xl space-y-4 shadow"
+      >
+        <input
+          type="file"
+          multiple
+          accept="image/*,video/*"
+          onChange={(e) => setFiles([...e.target.files])}
+          className="w-full border p-2 rounded-lg"
+        />
+        <div className="flex gap-4">
           <input
-            type="text"
-            placeholder="Tytuł"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full border rounded px-3 py-2"
-          />
-        </div>
-        <div>
-          <input
-            type="text"
-            placeholder="Opis"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="w-full border rounded px-3 py-2"
-          />
-        </div>
-        <div>
-          <input
-            type="text"
             placeholder="Kategoria"
+            className="flex-1 border p-2 rounded-lg"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            className="w-full border rounded px-3 py-2"
           />
-        </div>
-        <div>
           <input
             type="number"
             step="0.01"
             placeholder="Cena"
+            className="w-32 border p-2 rounded-lg"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
-            className="w-full border rounded px-3 py-2"
-          />
-        </div>
-        <div>
-          <input
-            type="file"
-            accept="image/*,video/*"
-            onChange={(e) => setFile(e.target.files[0])}
-            className="w-full"
           />
         </div>
         <button
-          type="submit"
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
+          disabled={!files.length}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg disabled:opacity-50"
         >
-          Dodaj plik
+          Wyślij{files.length ? ` (${files.length})` : ""}
         </button>
       </form>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {photos.map((photo) => (
-          <div
-            key={photo.id}
-            className="bg-gray-200 shadow rounded overflow-hidden relative p-2"
-          >
-            <Link to={`/photo/${photo.id}`}>
-              <img
-                src={`http://localhost:8000/photos/${photo.id}/file`}
-                alt={photo.title}
-                className="w-full h-48 object-cover mb-2"
-              />
-            </Link>
-
-            {editingPhotoId === photo.id ? (
-              <div className="space-y-2">
-                <input
-                  type="text"
-                  value={editedTitle}
-                  onChange={(e) => setEditedTitle(e.target.value)}
-                  className="w-full border rounded px-2 py-1"
-                  placeholder="Nowy tytuł"
-                />
-                <input
-                  type="text"
-                  value={editedDescription}
-                  onChange={(e) => setEditedDescription(e.target.value)}
-                  className="w-full border rounded px-2 py-1"
-                  placeholder="Nowy opis"
-                />
-                <button
-                  onClick={() => handleEdit(photo.id)}
-                  className="w-full bg-green-500 text-white rounded px-2 py-1 text-sm hover:bg-green-700 transition"
-                >
-                  Zapisz
-                </button>
-                <button
-                  onClick={() => setEditingPhotoId(null)}
-                  className="w-full bg-gray-400 text-white rounded px-2 py-1 text-sm hover:bg-gray-600 transition"
-                >
-                  Anuluj
-                </button>
-              </div>
-            ) : (
-              <>
-                <h3 className="font-bold">{photo.title}</h3>
-                <p className="text-sm text-gray-600 truncate">
-                  {photo.description}
-                </p>
-                <div className="flex justify-between mt-2">
-                  <button
-                    onClick={() => {
-                      setEditingPhotoId(photo.id);
-                      setEditedTitle(photo.title);
-                      setEditedDescription(photo.description);
-                    }}
-                    className="bg-yellow-500 text-white rounded px-2 py-1 text-xs hover:bg-yellow-700 transition"
-                  >
-                    Edytuj
-                  </button>
-                  <button
-                    onClick={() => handleDelete(photo.id)}
-                    className="bg-red-500 text-white rounded px-2 py-1 text-xs hover:bg-red-700 transition"
-                  >
-                    Usuń
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+      {/* lista miniatur */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        {photos.map((p) => (
+          <PhotoCard key={p.id} photo={p} onUpdated={fetchPhotos} />
         ))}
       </div>
     </div>
   );
 }
-
-export default MyPhotos;

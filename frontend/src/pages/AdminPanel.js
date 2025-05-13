@@ -1,90 +1,76 @@
-
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
 
 function AdminPanel() {
   const [users, setUsers] = useState([]);
-  const [newRole, setNewRole] = useState("");
+  const [newRoles, setNewRoles] = useState({});
+  const token = localStorage.getItem("access_token");
 
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
-    if (!token) {
-      alert("Brak tokenu. Zaloguj się jako admin.");
-      return;
-    }
-
+    if (!token) return;
     axios
       .get("http://127.0.0.1:8000/users/all", {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       })
-      .then((res) => {
-        setUsers(res.data);
-      })
+      .then((res) => setUsers(res.data))
       .catch((err) => {
         console.error(err);
-        alert("Błąd pobierania listy użytkowników. Czy jesteś adminem?");
+        alert("Błąd ładowania użytkowników lub brak uprawnień admina.");
       });
-  }, []);
+  }, [token]);
 
-  const updateRole = (userId) => {
-    const token = localStorage.getItem("access_token");
-    if (!token) return;
-
-    if (!newRole) {
-      alert("Wpisz nową rolę zanim ją ustawisz.");
-      return;
-    }
+  const handleRoleChange = (id) => {
+    if (!newRoles[id]) return;
 
     axios
-      .put(`http://127.0.0.1:8000/users/set-role/${userId}`,
-        { new_role: newRole },
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
+      .put(`http://127.0.0.1:8000/users/set-role/${id}`, {
+        new_role: newRoles[id],
+      }, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
       .then((res) => {
-        alert("Zmieniono rolę użytkownika!");
-
-        setUsers(users.map((u) => (u.id === userId ? res.data : u)));
+        alert("Rola zaktualizowana!");
+        setUsers(users.map(u => u.id === id ? res.data : u));
       })
       .catch((err) => {
         console.error(err);
-        alert("Błąd zmiany roli");
+        alert("Nie udało się zmienić roli.");
       });
   };
 
   return (
-    <div className="min-h-screen p-8">
-      <h2 className="text-2xl font-bold mb-4">Panel administratora</h2>
-
-      <table className="w-full bg-white shadow-lg border border-gray-300">
+    <div className="p-6">
+      <h2 className="text-2xl font-bold mb-6">Panel administratora</h2>
+      <table className="w-full border">
         <thead>
           <tr className="bg-gray-100">
-            <th className="px-4 py-2 border-b">ID</th>
-            <th className="px-4 py-2 border-b">Email</th>
-            <th className="px-4 py-2 border-b">Username</th>
-            <th className="px-4 py-2 border-b">Rola</th>
-            <th className="px-4 py-2 border-b">Akcje</th>
+            <th className="p-2 border">ID</th>
+            <th className="p-2 border">Email</th>
+            <th className="p-2 border">Username</th>
+            <th className="p-2 border">Rola</th>
+            <th className="p-2 border">Nowa rola</th>
           </tr>
         </thead>
         <tbody>
-          {users.map((u) => (
-            <tr key={u.id} className="text-center">
-              <td className="px-4 py-2 border-b">{u.id}</td>
-              <td className="px-4 py-2 border-b">{u.email}</td>
-              <td className="px-4 py-2 border-b">{u.username || "brak"}</td>
-              <td className="px-4 py-2 border-b">{u.role}</td>
-              <td className="px-4 py-2 border-b">
+          {users.map(user => (
+            <tr key={user.id}>
+              <td className="p-2 border">{user.id}</td>
+              <td className="p-2 border">{user.email}</td>
+              <td className="p-2 border">{user.username || "brak"}</td>
+              <td className="p-2 border">{user.role}</td>
+              <td className="p-2 border">
                 <input
-                  type="text"
-                  placeholder="Nowa rola"
-                  className="border border-gray-300 rounded px-2 py-1"
-                  onChange={(e) => setNewRole(e.target.value)}
+                  className="border px-2 py-1"
+                  placeholder="np. admin"
+                  onChange={(e) =>
+                    setNewRoles({ ...newRoles, [user.id]: e.target.value })
+                  }
                 />
                 <button
                   className="ml-2 px-3 py-1 bg-blue-500 text-white rounded"
-                  onClick={() => updateRole(u.id)}
+                  onClick={() => handleRoleChange(user.id)}
                 >
-                  Zmień rolę
+                  Zmień
                 </button>
               </td>
             </tr>

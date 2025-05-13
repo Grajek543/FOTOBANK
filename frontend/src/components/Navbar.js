@@ -7,25 +7,26 @@ import axios from "axios";
 export default function Navbar({ isAuthenticated, setIsAuthenticated }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [user, setUser] = useState(null);
   const navigate = useNavigate();
 
-  // przykładowe pobranie użytkownika / koszyka
-  const [cartCount, setCartCount] = useState(0);
   useEffect(() => {
     if (isAuthenticated) {
       const token = localStorage.getItem("access_token");
+
       axios
-        .get("http://127.0.0.1:8000/cart", {
+        .get("http://127.0.0.1:8000/users/me", {
           headers: { Authorization: `Bearer ${token}` },
         })
-        .then((res) => setCartCount(res.data.length))
-        .catch(() => setCartCount(0));
+        .then((res) => setUser(res.data))
+        .catch(() => setUser(null));
     }
   }, [isAuthenticated]);
 
   const handleLogout = () => {
     localStorage.removeItem("access_token");
     setIsAuthenticated(false);
+    setUser(null);
     navigate("/login");
   };
 
@@ -60,50 +61,47 @@ export default function Navbar({ isAuthenticated, setIsAuthenticated }) {
         <div className="flex items-center space-x-4">
           {isAuthenticated ? (
             <>
-              <button
-                onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="relative focus:outline-none"
-              >
-                <FaUserCircle size={24} />
+              <div className="relative">
+                <button
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                  className="focus:outline-none"
+                >
+                  <FaUserCircle size={24} />
+                </button>
                 {dropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white border rounded shadow-lg">
-                    <Link
-                      to="/account"
-                      className="block px-4 py-2 hover:bg-gray-100"
-                    >
+                  <div className="absolute right-0 mt-2 w-48 bg-white border rounded shadow-lg z-50">
+                    <Link to="/account" className="block px-4 py-2 hover:bg-gray-100">
                       Moje konto
                     </Link>
-                    <Link
-                      to="/myphotos"
-                      className="block px-4 py-2 hover:bg-gray-100"
-                    >
+                    <Link to="/myphotos" className="block px-4 py-2 hover:bg-gray-100">
                       Moje zdjęcia
                     </Link>
-                    <button
+                    <Link to="/settings" className="block px-4 py-2 hover:bg-gray-100">
+                      Ustawienia
+                    </Link>
+                    {user?.role === "admin" && (
+                      <Link to="/admin" className="block px-4 py-2 hover:bg-gray-100">
+                        Panel admina
+                      </Link>
+                    )}
+                    <div
                       onClick={handleLogout}
-                      className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+                      role="button"
+                      className="block w-full text-left px-4 py-2 hover:bg-gray-100 cursor-pointer"
                     >
                       Wyloguj się
-                    </button>
+                    </div>
                   </div>
                 )}
-              </button>
+              </div>
 
               <Link to="/cart" className="relative">
                 <FaShoppingCart size={20} />
-                {cartCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full px-1">
-                    {cartCount}
-                  </span>
-                )}
               </Link>
             </>
           ) : (
             <>
-              <Link
-                to="/login"
-                className="px-3 py-1 border rounded hover:bg-gray-100"
-              >
+              <Link to="/login" className="px-3 py-1 border rounded hover:bg-gray-100">
                 Zaloguj
               </Link>
               <Link

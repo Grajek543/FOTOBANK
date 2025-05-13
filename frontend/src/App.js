@@ -15,7 +15,7 @@ import Cart from "./pages/Cart";
 import AdminPanel from "./pages/AdminPanel"; 
 import MyPhotos from "./pages/MyPhotos";
 import PhotoDetails from "./pages/PhotoDetails";
-import Gallery from "./pages/Gallery";
+import Gallery from './components/Gallery';
 
 function AppContent() {
   const location = useLocation();
