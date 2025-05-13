@@ -6,16 +6,34 @@ import PhotoCard                  from "../components/PhotoCard";
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
 export default function MyPhotos() {
-  /* --- STANY ------------------------------------------------------- */
-  const [photos,    setPhotos]    = useState([]);
-  const [files,     setFiles]     = useState([]);
-  const [category,  setCategory]  = useState("");
-  const [price,     setPrice]     = useState("0");   // string → łatwiej z input number
+
+  const [photos, setPhotos]   = useState([]);
+  const [files, setFiles]     = useState([]);
+  const [category, setCategory] = useState("");
+  const [price, setPrice]       = useState(0);
+  const [banned, setBanned]     = useState(false);
+
   const token = localStorage.getItem("access_token");
 
-  /* --- POBIERANIE LISTY UŻYTKOWNIKA -------------------------------- */
+  /* ───────────── sprawdzenie blokady ───────────── */
+  useEffect(() => {
+    const flag = localStorage.getItem("banned");
+    if (flag !== null) {
+      setBanned(flag === "true");
+    } else if (token) {
+      axios
+        .get(`${API_URL}/users/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        .then((res) => setBanned(res.data.banned))
+        .catch(() => {});
+    }
+  }, [token]);
+
+  /* ───────────── pobieranie listy ──────────────── */
   const fetchPhotos = useCallback(() => {
-    if (!token) return;                               // brak tokenu → brak zapytania
+    if (!token) return;
+
     axios
       .get(`${API_URL}/photos/me`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -26,6 +44,7 @@ export default function MyPhotos() {
 
   useEffect(fetchPhotos, [fetchPhotos]);
 
+
   /* --- WYSYŁANIE WIELU PLIKÓW ------------------------------------- */
   const uploadMany = async (e) => {
   e.preventDefault();
@@ -34,12 +53,14 @@ export default function MyPhotos() {
   try {
     const form = new FormData();
 
+
     // ← jedna iteracja, ale 3× append na te same klucze (tworzą listy)
     files.forEach((f) => {
       form.append("files", f);           // lista UploadFile
       form.append("titles", f.name);     // lista str
       form.append("descriptions", "");   // lista str (puste)
     });
+
 
     /* jeśli backend wymaga też kategorii / ceny w liczbie pojedynczej,
        zostaw tak – jeśli w liczbie mnogiej → form.append("categories", …) itp. */
@@ -58,12 +79,13 @@ export default function MyPhotos() {
   }
 };
 
-  /* --- UI ---------------------------------------------------------- */
+
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-8">
       <h1 className="text-3xl font-bold">Moje zdjęcia</h1>
 
       {/* formularz uploadu */}
+
       <form
         onSubmit={uploadMany}
         className="border p-4 rounded-xl space-y-4 shadow"
@@ -98,6 +120,7 @@ export default function MyPhotos() {
           Wyślij{files.length ? ` (${files.length})` : ""}
         </button>
       </form>
+
 
       {/* lista miniatur */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
