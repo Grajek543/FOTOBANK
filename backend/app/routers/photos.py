@@ -10,7 +10,7 @@ from typing import List
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Form, Query, Body
 from fastapi.responses import FileResponse
 from starlette.staticfiles import StaticFiles
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
 
 from app.database import SessionLocal
@@ -129,19 +129,24 @@ async def upload_photos(
 @router.get("/", response_model=List[schemas.PhotoOut])
 def list_photos(
     q: str = Query(default=None, description="Wyszukiwanie po tytule, opisie lub kategorii"),
+    category_id: int = Query(default=None, description="Filtruj po ID kategorii"),
     db: Session = Depends(get_db),
 ):
     query = db.query(models.Photo)
-    if q:
+
+    if category_id:
+        query = query.join(models.PhotoCategory).filter(models.PhotoCategory.category_id == category_id)
+    elif q:
         query = query.filter(
             or_(
                 models.Photo.title.ilike(f"%{q}%"),
-                models.Photo.description.ilike(f"%{q}%"),
-                models.Photo.category.ilike(f"%{q}%")
+                models.Photo.description.ilike(f"%{q}%")
             )
         )
-    photos = query.all()
+
+    photos = query.options(joinedload(models.Photo.categories)).all()
     return [build_photo_response(p) for p in photos]
+
 
 @router.get("/me", response_model=List[schemas.PhotoOut])
 def get_my_photos(user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):

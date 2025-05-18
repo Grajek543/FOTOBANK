@@ -1,20 +1,33 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
-const categories = ["Krajobrazy", "Portrety", "Miasta", "Jedzenie", "Technologia", "Zwierzęta"];
+export default function CategoriesBar() {
+  const [categories, setCategories] = useState([]);
+  const navigate = useNavigate();
 
-function CategoriesBar() {
+  useEffect(() => {
+    fetch(`${API_URL}/photos/categories`)
+      .then((res) => res.json())
+      .then((data) => setCategories(data))
+      .catch(console.error);
+  }, []);
+
+  const handleClick = (id) => {
+    navigate(`/?category_id=${id}`);
+  };
+
   return (
-    <div className="bg-gray-200 px-6 py-3 flex gap-4 overflow-x-auto shadow-inner">
-      {categories.map((cat, index) => (
+    <div className="flex flex-wrap gap-2 p-4 bg-white rounded shadow mb-6">
+      {categories.map((cat) => (
         <button
-          key={index}
-          className="px-4 py-2 bg-white border rounded-full text-sm hover:bg-blue-100 transition"
+          key={cat.id}
+          onClick={() => handleClick(cat.id)}
+          className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
         >
-          {cat}
+          {cat.name}
         </button>
       ))}
     </div>
   );
 }
-
-export default CategoriesBar;

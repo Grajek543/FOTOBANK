@@ -10,11 +10,16 @@ export default function Gallery() {
 
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
+    const category_id = queryParams.get("category_id");
     const q = queryParams.get("q") || "";
     console.log("Zapytanie z URL:", q);
 
     setLoading(true);
-    fetch(`${API_URL}/photos/?q=${encodeURIComponent(q)}`)
+    const url = category_id
+  ? `${API_URL}/photos/?category_id=${category_id}`
+  : `${API_URL}/photos/?q=${encodeURIComponent(q)}`;
+
+fetch(url)
       .then((r) => {
         if (!r.ok) throw new Error("Błąd zapytania: " + r.status);
         return r.json();
