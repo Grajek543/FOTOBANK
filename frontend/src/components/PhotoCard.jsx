@@ -1,5 +1,5 @@
 // src/components/PhotoCard.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
@@ -8,10 +8,29 @@ const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
  * @param {{ photo: object, onUpdated: () => void }} props
  */
 export default function PhotoCard({ photo, onUpdated }) {
-  const [isEditing, setIsEditing]       = useState(false);
-  const [titleInput, setTitleInput]     = useState(photo.title);
-  const [descInput, setDescInput]       = useState(photo.description);
+  const [isEditing, setIsEditing] = useState(false);
+  const [titleInput, setTitleInput] = useState(photo.title);
+  const [descInput, setDescInput] = useState(photo.description);
+  const [availableCategories, setAvailableCategories] = useState([]);
+  const [selectedCategories, setSelectedCategories] = useState([]);
   const token = localStorage.getItem("access_token");
+
+  useEffect(() => {
+    axios
+      .get(`${API_URL}/photos/categories`)
+      .then((res) => setAvailableCategories(res.data))
+      .catch(console.error);
+
+    if (photo.category_ids) {
+      setSelectedCategories(photo.category_ids);
+    }
+  }, [photo.id]);
+
+  const toggleCategory = (id) => {
+    setSelectedCategories((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
 
   const normalize = (path = "") =>
     /^https?:\/\//i.test(path)
@@ -19,17 +38,25 @@ export default function PhotoCard({ photo, onUpdated }) {
       : `${API_URL}${path.startsWith("/") ? "" : "/"}${path.replace(/\\/g, "/")}`;
 
   const isVideo = /\.(mp4|mov|mkv)$/i.test(photo.file_url);
-  const thumb   = normalize(photo.thumb_url || photo.file_url);
+  const thumb = normalize(photo.thumb_url || photo.file_url);
   const fileSrc = normalize(photo.file_url);
 
-  // ---- akcje ------------------------------------------------------------
   const saveEdit = async () => {
     try {
       await axios.put(
-        `${API_URL}/photos/${photo.id}`,
-        { title: titleInput, description: descInput },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+  `${API_URL}/photos/${photo.id}`,
+  {
+    photo_data: {
+      title: titleInput,
+      description: descInput
+    },
+    category_ids: selectedCategories
+  },
+  {
+    headers: { Authorization: `Bearer ${token}` },
+  }
+);
+
       setIsEditing(false);
       onUpdated?.();
     } catch (err) {
@@ -51,10 +78,8 @@ export default function PhotoCard({ photo, onUpdated }) {
     }
   };
 
-  // ---- widok ------------------------------------------------------------
   return (
     <div className="relative group bg-gray-100 rounded-xl shadow overflow-hidden">
-      {/* miniatura / wideo */}
       {isVideo ? (
         <video
           controls
@@ -66,9 +91,8 @@ export default function PhotoCard({ photo, onUpdated }) {
         <img src={thumb} alt={photo.title} className="w-full h-48 object-cover" />
       )}
 
-      {/* tryb edycji ------------------------------------------------------ */}
       {isEditing ? (
-        <div className="absolute inset-0 bg-white/95 flex flex-col p-4 gap-2">
+        <div className="absolute inset-0 bg-white/95 flex flex-col p-4 gap-2 overflow-y-auto">
           <input
             className="border rounded px-2 py-1"
             value={titleInput}
@@ -81,7 +105,22 @@ export default function PhotoCard({ photo, onUpdated }) {
             onChange={(e) => setDescInput(e.target.value)}
             placeholder="Opis"
           />
-          <div className="flex gap-2">
+
+          <div className="text-sm font-medium">Kategorie:</div>
+          <div className="grid grid-cols-2 gap-1 max-h-24 overflow-auto">
+            {availableCategories.map((cat) => (
+              <label key={cat.id} className="flex items-center gap-1">
+                <input
+                  type="checkbox"
+                  checked={selectedCategories.includes(cat.id)}
+                  onChange={() => toggleCategory(cat.id)}
+                />
+                {cat.name}
+              </label>
+            ))}
+          </div>
+
+          <div className="flex gap-2 pt-2">
             <button
               onClick={saveEdit}
               className="flex-1 bg-green-600 hover:bg-green-700 text-white py-1 rounded"
@@ -97,7 +136,6 @@ export default function PhotoCard({ photo, onUpdated }) {
           </div>
         </div>
       ) : (
-        /* przyciski – pojawiają się dopiero przy najechaniu ----------------*/
         <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition">
           <button
             onClick={() => setIsEditing(true)}
@@ -114,7 +152,6 @@ export default function PhotoCard({ photo, onUpdated }) {
         </div>
       )}
 
-      {/* opis pod miniaturą ------------------------------------------------*/}
       {!isEditing && (
         <div className="p-2">
           <h3 className="font-semibold truncate">{photo.title}</h3>

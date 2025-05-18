@@ -84,9 +84,11 @@ class PhotoOut(BaseModel):
     owner_username: Optional[str] = None
     file_url: Optional[str] = None
     thumb_url: Optional[str] = None
+    category_ids: List[int] = []
 
     class Config:
         from_attributes = True
+
 
 
 # ------------------------------------------------------------------

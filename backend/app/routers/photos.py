@@ -7,7 +7,7 @@ import mimetypes
 import subprocess
 from typing import List
 
-from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Form, Query
+from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Form, Query, Body
 from fastapi.responses import FileResponse
 from starlette.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
@@ -59,6 +59,8 @@ def get_db():
 def build_photo_response(photo: models.Photo) -> schemas.PhotoOut:
     file_name = Path(photo.file_path).name if photo.file_path else ""
     thumb_name = f"{Path(file_name).stem}.jpg" if file_name else None
+    category_ids = [c.id for c in photo.categories]
+
     return schemas.PhotoOut(
         id=photo.id,
         title=photo.title,
@@ -68,7 +70,9 @@ def build_photo_response(photo: models.Photo) -> schemas.PhotoOut:
         owner_id=photo.owner_id,
         file_url=f"{API_BASE}/media/{file_name}" if file_name else "",
         thumb_url=f"{API_BASE}/media/thumbs/{thumb_name}" if thumb_name else None,
+        category_ids=category_ids
     )
+
 
 router = APIRouter(prefix="/photos", tags=["photos"])
 
@@ -177,7 +181,8 @@ def delete_photo(photo_id: int, user_id: int = Depends(get_current_user), db: Se
 @router.put("/{photo_id}", response_model=schemas.PhotoOut)
 def update_photo(
     photo_id: int,
-    photo_data: schemas.PhotoUpdate,
+    photo_data: schemas.PhotoUpdate = Body(...),
+    category_ids: List[int] = Body(default=[]),
     user_id: int = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -185,8 +190,17 @@ def update_photo(
     if not photo:
         raise HTTPException(404, "Zdjęcie nie znalezione lub brak dostępu")
 
-    photo.title = photo_data.title
-    photo.description = photo_data.description
+    # aktualizacja podstawowych pól
+    if photo_data.title is not None:
+        photo.title = photo_data.title
+    if photo_data.description is not None:
+        photo.description = photo_data.description
+
+    # usuń stare kategorie i dodaj nowe
+    db.query(models.PhotoCategory).filter(models.PhotoCategory.photo_id == photo.id).delete()
+    for cat_id in category_ids:
+        db.add(models.PhotoCategory(photo_id=photo.id, category_id=cat_id))
+
     db.commit()
     db.refresh(photo)
     return build_photo_response(photo)
