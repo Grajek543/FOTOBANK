@@ -1,53 +1,67 @@
-import { useState, useRef } from "react";
-import axios from "../api/axios";          // axios instance z tokenem i baseURL
-import uploadFileInChunks from "../utils/chunkUpload"; // funkcja do wysyłki na kawałki
+//src/pages/UploadPhoto.js
+import { useEffect, useRef, useState } from "react";
+import axios from "../api/axios";
 
-/**
- * Komponent jednego ekranu – masowy upload zdjęć/wideo z paskami postępu.
- */
 export default function UploadPhoto() {
   const [files, setFiles] = useState([]);
-  const [category, setCategory] = useState("");
+  const [categories, setCategories] = useState([]);
+  const [selectedCategories, setSelectedCategories] = useState([]);
   const [price, setPrice] = useState(0);
-  const [progress, setProgress] = useState({});  // { filename: pct }
+  const [progress, setProgress] = useState({});
   const inputRef = useRef(null);
 
-  /* ---------------------------- helpers ---------------------------- */
+  // pobranie dostępnych kategorii z API
+  useEffect(() => {
+    axios
+      .get("/photos/categories")
+      .then((res) => setCategories(res.data))
+      .catch((err) => {
+        console.error("Błąd ładowania kategorii", err);
+        setCategories([]);
+      });
+  }, []);
+
   const handleSelect = (e) => {
     setFiles([...e.target.files]);
     setProgress({});
   };
 
+  const toggleCategory = (id) => {
+    setSelectedCategories((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
   const handleUpload = async () => {
-    if (!files.length) return;
+    if (!files.length || !selectedCategories.length) return;
 
     try {
-      for (const file of files) {
-        // local progress updater
-        const onChunkProgress = (pct) =>
-          setProgress((prev) => ({ ...prev, [file.name]: pct }));
+      const form = new FormData();
+      files.forEach((file) => form.append("files", file));
+      form.append("price", price);
 
-        // wysyłka w kawałkach (opcjonalnie) – ZAMIEN na prosty axios.post jeśli nie potrzebujesz chunków
-        await uploadFileInChunks(file, {
-          title: file.name,
-          description: "",
-          category,
-          price,
-          media_type: file.type.startsWith("image") ? "image" : "video",
-        }, null, onChunkProgress);
-      }
+      selectedCategories.forEach((catId) => form.append("category_ids", catId));
+      files.forEach((file) => form.append("titles", file.name));
+      files.forEach(() => form.append("descriptions", "")); // Puste opisy
 
-      alert("Wysłano wszystkie pliki!");
+      await axios.post("/photos/upload", form, {
+        onUploadProgress: (e) => {
+          const percent = Math.round((e.loaded * 100) / e.total);
+          setProgress({ all: percent });
+        },
+      });
+
+      alert("Wysłano!");
       setFiles([]);
+      setSelectedCategories([]);
       setProgress({});
       if (inputRef.current) inputRef.current.value = "";
     } catch (err) {
       console.error(err);
-      alert("Błąd podczas przesyłania plików.");
+      alert("Błąd przesyłania.");
     }
   };
 
-  /* ----------------------------- render ----------------------------- */
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
       <h1 className="text-3xl font-bold mb-4">Dodaj zdjęcia / wideo</h1>
@@ -62,45 +76,49 @@ export default function UploadPhoto() {
           className="w-full border p-2 rounded-lg"
         />
 
-        <div className="flex gap-4">
-          <input
-            type="text"
-            placeholder="Kategoria"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="flex-1 border p-2 rounded-lg"
-          />
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="Cena"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            className="w-32 border p-2 rounded-lg"
-          />
+        <div className="grid grid-cols-2 gap-2">
+          {categories.map((cat) => (
+            <label key={cat.id} className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={selectedCategories.includes(cat.id)}
+                onChange={() => toggleCategory(cat.id)}
+              />
+              {cat.name}
+            </label>
+          ))}
         </div>
+
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="Cena"
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+          className="w-32 border p-2 rounded-lg"
+        />
 
         <button
           onClick={handleUpload}
-          disabled={!files.length}
+          disabled={!files.length || !selectedCategories.length}
           className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg disabled:opacity-50"
         >
-          {files.length ? `Wyślij (${files.length})` : "Wybierz pliki"}
+          Wyślij ({files.length})
         </button>
 
-        {/* lista postępu */}
-        {files.map((f) => (
-          <div key={f.name} className="space-y-1">
-            <span className="text-sm">{f.name}</span>
+        {/* pasek postępu globalny */}
+        {progress.all && (
+          <div className="space-y-1">
+            <span className="text-sm">Wysyłanie plików...</span>
             <div className="w-full h-2 bg-gray-200 rounded">
               <div
                 className="h-2 bg-blue-600 rounded"
-                style={{ width: `${progress[f.name] || 0}%` }}
+                style={{ width: `${progress.all}%` }}
               />
             </div>
           </div>
-        ))}
+        )}
       </div>
     </div>
   );

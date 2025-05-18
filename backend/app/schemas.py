@@ -106,6 +106,14 @@ class CategoryRead(CategoryBase):
     class Config:
         from_attributes = True
 
+class CategoryOut(BaseModel):
+    id: int
+    name: str
+
+    class Config:
+        orm_mode = True
+
+
 
 # ------------------------------------------------------------------
 # PhotoCategory schemas

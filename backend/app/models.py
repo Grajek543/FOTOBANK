@@ -31,7 +31,7 @@ class Photo(Base):
     id          = Column(Integer, primary_key=True, index=True)
     title       = Column(String(255))
     description = Column(String(1024))
-    category    = Column(String(100))
+    category    = Column(String(100))  # możesz później usunąć
     price       = Column(Float, default=0.0)
 
     file_path   = Column(String(255))
@@ -41,8 +41,15 @@ class Photo(Base):
     owner_id = Column(Integer, ForeignKey("users.id"))
 
     # relacje
-    owner      = relationship("User",      back_populates="photos")
-    purchases  = relationship("Purchase",  back_populates="photo")
+    owner      = relationship("User", back_populates="photos")
+    purchases  = relationship("Purchase", back_populates="photo")
+
+    categories = relationship(
+        "Category",
+        secondary="photo_categories",
+        backref="photos"
+    )
+
 
 
 # --------------------------- Purchase -----------------------
@@ -58,3 +65,15 @@ class Purchase(Base):
     # relacje
     user  = relationship("User",  back_populates="purchases")
     photo = relationship("Photo", back_populates="purchases")
+
+
+# --------------------------- Categories -----------------------
+class Category(Base):
+    __tablename__ = "categories"
+    id = Column(Integer, primary_key=True)
+    name = Column(String(100), unique=True, nullable=False)
+
+class PhotoCategory(Base):
+    __tablename__ = "photo_categories"
+    photo_id = Column(Integer, ForeignKey("photos.id"), primary_key=True)
+    category_id = Column(Integer, ForeignKey("categories.id"), primary_key=True)
