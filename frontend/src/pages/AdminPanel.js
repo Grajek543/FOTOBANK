@@ -23,19 +23,30 @@ function AdminPanel() {
 
   /* ----------- zmiana roli ----------- */
   const setRole = (id, role) => {
-    api
-      .put(`/users/set-role/${id}`, { new_role: role })
-      .then((res) => setUsers(users.map((u) => (u.id === id ? res.data : u))))
-      .catch(() => alert("Nie udało się zmienić roli."));
-  };
+  const confirmText = `Czy na pewno chcesz ustawić rolę "${role}" dla użytkownika o ID ${id}?`;
+  if (!window.confirm(confirmText)) return;
+
+  api
+    .put(`/users/set-role/${id}`, { new_role: role })
+    .then((res) => setUsers(users.map((u) => (u.id === id ? res.data : u))))
+    .catch(() => alert("Nie udało się zmienić roli."));
+};
+
 
   /* ----------- blokada ----------- */
   const toggleBan = (id, banned) => {
-    api
-      .put(`/users/ban/${id}`, { banned: !banned })
-      .then((res) => setUsers(users.map((u) => (u.id === id ? res.data : u))))
-      .catch(() => alert("Nie udało się zmienić blokady."));
-  };
+  const confirmText = banned
+    ? `Czy na pewno chcesz ODBLOKOWAĆ użytkownika o ID ${id}?`
+    : `Czy na pewno chcesz ZABLOKOWAĆ użytkownika o ID ${id}?`;
+
+  if (!window.confirm(confirmText)) return;
+
+  api
+    .put(`/users/ban/${id}`, { banned: !banned })
+    .then((res) => setUsers(users.map((u) => (u.id === id ? res.data : u))))
+    .catch(() => alert("Nie udało się zmienić blokady."));
+};
+
 
   /* ----------- UI ----------- */
   return (

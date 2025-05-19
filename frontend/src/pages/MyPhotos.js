@@ -12,6 +12,17 @@ export default function MyPhotos() {
   const [progress, setProgress] = useState({});
   const token = localStorage.getItem("access_token");
   const inputRef = useRef(null);
+  const [me, setMe] = useState(null);
+
+  useEffect(() => {
+  if (!token) return;
+  axios
+    .get(`${API_URL}/users/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    .then((res) => setMe(res.data))
+    .catch(console.error);
+  }, [token]);
 
   useEffect(() => {
     axios
@@ -106,69 +117,76 @@ export default function MyPhotos() {
     <div className="max-w-6xl mx-auto p-6 space-y-8">
       <h1 className="text-3xl font-bold">Moje zdjęcia</h1>
 
-      <form onSubmit={uploadMany} className="border p-4 rounded-xl space-y-6 shadow">
+      {me?.banned ? (
+  <div className="text-red-600 font-semibold text-lg border p-4 rounded-lg bg-red-100">
+    Twoje konto ma zablokowaną możliwość dodawania nowych zdjęć.
+  </div>
+) : (
+  <form onSubmit={uploadMany} className="border p-4 rounded-xl space-y-6 shadow">
+    <input
+      ref={inputRef}
+      type="file"
+      multiple
+      accept="image/*,video/*"
+      onChange={handleSelect}
+      className="w-full border p-2 rounded-lg"
+    />
+
+    {files.map((file, idx) => (
+      <div key={file.name} className="border p-4 rounded bg-white shadow space-y-2">
+        <h2 className="font-semibold">{file.name}</h2>
+
         <input
-          ref={inputRef}
-          type="file"
-          multiple
-          accept="image/*,video/*"
-          onChange={handleSelect}
-          className="w-full border p-2 rounded-lg"
+          type="text"
+          value={photoData[idx]?.title}
+          onChange={(e) => updatePhotoField(idx, "title", e.target.value)}
+          placeholder="Tytuł"
+          className="w-full border p-2 rounded"
         />
 
-        {files.map((file, idx) => (
-          <div key={file.name} className="border p-4 rounded bg-white shadow space-y-2">
-            <h2 className="font-semibold">{file.name}</h2>
+        <textarea
+          value={photoData[idx]?.description}
+          onChange={(e) => updatePhotoField(idx, "description", e.target.value)}
+          placeholder="Opis"
+          className="w-full border p-2 rounded"
+        />
 
-            <input
-              type="text"
-              value={photoData[idx]?.title}
-              onChange={(e) => updatePhotoField(idx, "title", e.target.value)}
-              placeholder="Tytuł"
-              className="w-full border p-2 rounded"
-            />
+        <input
+          type="number"
+          value={photoData[idx]?.price}
+          onChange={(e) =>
+            updatePhotoField(idx, "price", parseFloat(e.target.value))
+          }
+          placeholder="Cena"
+          className="w-32 border p-2 rounded"
+          min="0"
+          step="0.01"
+        />
 
-            <textarea
-              value={photoData[idx]?.description}
-              onChange={(e) => updatePhotoField(idx, "description", e.target.value)}
-              placeholder="Opis"
-              className="w-full border p-2 rounded"
-            />
+        <div className="text-sm font-medium">Kategorie:</div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 max-h-32 overflow-auto text-sm">
+          {availableCategories.map((cat) => (
+            <label key={cat.id} className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={photoData[idx]?.category_ids.includes(cat.id)}
+                onChange={() => toggleCategory(idx, cat.id)}
+              />
+              {cat.name}
+            </label>
+          ))}
+        </div>
+      </div>
+    ))}
 
-            <input
-              type="number"
-              value={photoData[idx]?.price}
-              onChange={(e) =>
-                updatePhotoField(idx, "price", parseFloat(e.target.value))
-              }
-              placeholder="Cena"
-              className="w-32 border p-2 rounded"
-              min="0"
-              step="0.01"
-            />
+    {files.length > 0 && (
+      <button className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg">
+        Wyślij ({files.length})
+      </button>
+    )}
+  </form>
+)}
 
-            <div className="text-sm font-medium">Kategorie:</div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 max-h-32 overflow-auto text-sm">
-              {availableCategories.map((cat) => (
-                <label key={cat.id} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={photoData[idx]?.category_ids.includes(cat.id)}
-                    onChange={() => toggleCategory(idx, cat.id)}
-                  />
-                  {cat.name}
-                </label>
-              ))}
-            </div>
-          </div>
-        ))}
-
-        {files.length > 0 && (
-          <button className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg">
-            Wyślij ({files.length})
-          </button>
-        )}
-      </form>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         {photos.map((p) => (
