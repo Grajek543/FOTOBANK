@@ -11,6 +11,7 @@ export default function PhotoCard({ photo, onUpdated }) {
   const [isEditing, setIsEditing] = useState(false);
   const [titleInput, setTitleInput] = useState(photo.title);
   const [descInput, setDescInput] = useState(photo.description);
+  const [priceInput, setPriceInput] = useState(photo.price);
   const [availableCategories, setAvailableCategories] = useState([]);
   const [selectedCategories, setSelectedCategories] = useState([]);
   const token = localStorage.getItem("access_token");
@@ -44,19 +45,19 @@ export default function PhotoCard({ photo, onUpdated }) {
   const saveEdit = async () => {
     try {
       await axios.put(
-  `${API_URL}/photos/${photo.id}`,
-  {
-    photo_data: {
-      title: titleInput,
-      description: descInput
-    },
-    category_ids: selectedCategories
-  },
-  {
-    headers: { Authorization: `Bearer ${token}` },
-  }
-);
-
+        `${API_URL}/photos/${photo.id}`,
+        {
+          photo_data: {
+            title: titleInput,
+            description: descInput,
+            price: priceInput,
+          },
+          category_ids: selectedCategories,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
       setIsEditing(false);
       onUpdated?.();
     } catch (err) {
@@ -79,90 +80,102 @@ export default function PhotoCard({ photo, onUpdated }) {
   };
 
   return (
-  <div
-    className={`relative group bg-gray-100 rounded-xl shadow overflow-hidden ${
-      isEditing ? "col-span-2 md:col-span-1 min-h-[400px]" : ""
-    }`}
-  >
-    {isVideo ? (
-      <video
-        controls
-        className="w-full h-48 object-cover"
-        poster={thumb}
-        src={fileSrc}
-      />
-    ) : (
-      <img src={thumb} alt={photo.title} className="w-full h-48 object-cover" />
-    )}
-
-    {isEditing ? (
-      <div className="absolute inset-0 bg-white/95 flex flex-col p-6 gap-4 z-10 overflow-y-auto">
-        <input
-          className="border rounded px-3 py-2 text-base"
-          value={titleInput}
-          onChange={(e) => setTitleInput(e.target.value)}
-          placeholder="Tytuł"
+    <div
+      className={`relative group bg-gray-100 rounded-xl shadow overflow-hidden ${
+        isEditing ? "col-span-2 md:col-span-1 min-h-[500px]" : ""
+      }`}
+    >
+      {isVideo ? (
+        <video
+          controls
+          className="w-full h-48 object-cover"
+          poster={thumb}
+          src={fileSrc}
         />
-        <textarea
-          className="border rounded px-3 py-2 h-28 resize-vertical text-base"
-          value={descInput}
-          onChange={(e) => setDescInput(e.target.value)}
-          placeholder="Opis"
-        />
+      ) : (
+        <img src={thumb} alt={photo.title} className="w-full h-48 object-cover" />
+      )}
 
-        <div className="text-sm font-semibold">Kategorie:</div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-40 overflow-y-auto border rounded p-2 bg-gray-50">
-          {availableCategories.map((cat) => (
-            <label key={cat.id} className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={selectedCategories.includes(cat.id)}
-                onChange={() => toggleCategory(cat.id)}
-              />
-              {cat.name}
-            </label>
-          ))}
+      {isEditing ? (
+        <div className="absolute inset-0 bg-white/95 flex flex-col p-6 gap-4 z-10 overflow-y-auto max-h-[600px] min-h-[500px]">
+          <input
+            className="border rounded px-3 py-2 text-base"
+            value={titleInput}
+            onChange={(e) => setTitleInput(e.target.value)}
+            placeholder="Tytuł"
+          />
+          <textarea
+            className="border rounded px-3 py-2 h-40 resize-vertical text-base"
+            value={descInput}
+            onChange={(e) => setDescInput(e.target.value)}
+            placeholder="Opis"
+          />
+          <input
+            type="number"
+            className="border rounded px-3 py-2 text-base w-40"
+            value={priceInput}
+            onChange={(e) => setPriceInput(parseFloat(e.target.value))}
+            placeholder="Cena"
+            min="0"
+            step="0.01"
+          />
+
+          <div className="text-sm font-semibold">Kategorie:</div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-40 overflow-y-auto border rounded p-2 bg-gray-50">
+            {availableCategories.map((cat) => (
+              <label key={cat.id} className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={selectedCategories.includes(cat.id)}
+                  onChange={() => toggleCategory(cat.id)}
+                />
+                {cat.name}
+              </label>
+            ))}
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <button
+              onClick={saveEdit}
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded"
+            >
+              Zapisz
+            </button>
+            <button
+              onClick={() => setIsEditing(false)}
+              className="flex-1 bg-gray-400 hover:bg-gray-500 text-white py-2 rounded"
+            >
+              Anuluj
+            </button>
+          </div>
         </div>
-
-        <div className="flex gap-2 pt-2">
+      ) : (
+        <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition">
           <button
-            onClick={saveEdit}
-            className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded"
+            onClick={() => setIsEditing(true)}
+            className="bg-yellow-500 text-xs text-white px-2 py-1 rounded"
           >
-            Zapisz
+            Edytuj
           </button>
           <button
-            onClick={() => setIsEditing(false)}
-            className="flex-1 bg-gray-400 hover:bg-gray-500 text-white py-2 rounded"
+            onClick={deletePhoto}
+            className="bg-red-600 text-xs text-white px-2 py-1 rounded"
           >
-            Anuluj
+            Usuń
           </button>
         </div>
-      </div>
-    ) : (
-      <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition">
-        <button
-          onClick={() => setIsEditing(true)}
-          className="bg-yellow-500 text-xs text-white px-2 py-1 rounded"
-        >
-          Edytuj
-        </button>
-        <button
-          onClick={deletePhoto}
-          className="bg-red-600 text-xs text-white px-2 py-1 rounded"
-        >
-          Usuń
-        </button>
-      </div>
-    )}
+      )}
 
-    {!isEditing && (
-      <div className="p-2">
-        <h3 className="font-semibold truncate">{photo.title}</h3>
-        <p className="text-sm text-gray-600 truncate">{photo.description}</p>
-      </div>
-    )}
-  </div>
-);
-
+      {!isEditing && (
+        <div className="p-2">
+          <h3 className="font-semibold truncate">{photo.title}</h3>
+          <p className="text-sm text-gray-600 truncate">{photo.description}</p>
+          {photo.category && (
+            <p className="text-sm text-gray-500">Kategorie: {photo.category}</p>
+          )}
+          <p className="text-sm text-gray-700 font-semibold">Cena: {photo.price} zł</p>
+        </div>
+      )}
+    </div>
+  );
 }

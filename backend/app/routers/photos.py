@@ -223,6 +223,9 @@ def update_photo(
         photo.title = photo_data.title
     if photo_data.description is not None:
         photo.description = photo_data.description
+    if photo_data.price is not None:
+        photo.price = photo_data.price
+
 
     db.query(models.PhotoCategory).filter(models.PhotoCategory.photo_id == photo.id).delete()
     for cat_id in category_ids:
