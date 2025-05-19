@@ -1,6 +1,5 @@
-// src/components/Navbar.js
-import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useRef } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { FaSearch, FaUserCircle, FaShoppingCart } from "react-icons/fa";
 import axios from "axios";
 
@@ -9,6 +8,8 @@ export default function Navbar({ isAuthenticated, setIsAuthenticated }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const dropdownRef = useRef(null);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -22,6 +23,24 @@ export default function Navbar({ isAuthenticated, setIsAuthenticated }) {
         .catch(() => setUser(null));
     }
   }, [isAuthenticated]);
+
+  // Zamykanie dropdowna przy zmianie ścieżki
+  useEffect(() => {
+    setDropdownOpen(false);
+  }, [location]);
+
+  // Zamykanie dropdowna przy kliknięciu poza nim
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("access_token");
@@ -61,7 +80,7 @@ export default function Navbar({ isAuthenticated, setIsAuthenticated }) {
         <div className="flex items-center space-x-4">
           {isAuthenticated ? (
             <>
-              <div className="relative">
+              <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
                   className="focus:outline-none"

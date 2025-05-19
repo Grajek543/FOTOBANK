@@ -92,6 +92,7 @@ class PhotoOut(BaseModel):
     file_url: Optional[str] = None
     thumb_url: Optional[str] = None
     category_ids: List[int] = []
+    purchases_number: int = 0
 
     class Config:
         from_attributes = True

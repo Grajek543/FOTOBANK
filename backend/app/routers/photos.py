@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Form, Q
 from fastapi.responses import FileResponse
 from starlette.staticfiles import StaticFiles
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 
 from app.database import SessionLocal
 from app.dependencies import get_current_user
@@ -62,16 +62,18 @@ def build_photo_response(photo: models.Photo) -> schemas.PhotoOut:
     category_ids = [c.id for c in photo.categories]
 
     return schemas.PhotoOut(
-        id=photo.id,
-        title=photo.title,
-        description=photo.description,
-        category=",".join([c.name for c in photo.categories]),
-        price=photo.price,
-        owner_id=photo.owner_id,
-        file_url=f"{API_BASE}/media/{file_name}" if file_name else "",
-        thumb_url=f"{API_BASE}/media/thumbs/{thumb_name}" if thumb_name else None,
-        category_ids=category_ids
-    )
+    id=photo.id,
+    title=photo.title,
+    description=photo.description,
+    category=",".join([c.name for c in photo.categories]),
+    price=photo.price,
+    owner_id=photo.owner_id,
+    file_url=f"{API_BASE}/media/{file_name}" if file_name else "",
+    thumb_url=f"{API_BASE}/media/thumbs/{thumb_name}" if thumb_name else None,
+    category_ids=category_ids,
+    purchases_number=len(photo.purchases)
+)
+
 
 router = APIRouter(prefix="/photos", tags=["photos"])
 
@@ -128,8 +130,9 @@ async def upload_photos(
 
 @router.get("/", response_model=List[schemas.PhotoOut])
 def list_photos(
-    q: str = Query(default=None, description="Wyszukiwanie po tytule, opisie lub kategorii"),
-    category_id: int = Query(default=None, description="Filtruj po ID kategorii"),
+    q: str = Query(default=None, description="Szukaj po tytule lub opisie"),
+    category_id: int = Query(default=None, description="ID kategorii"),
+    sort_by: str = Query(default=None, description="Sortowanie: 'popular', 'price_asc', 'price_desc', 'date_new'"),
     db: Session = Depends(get_db),
 ):
     query = db.query(models.Photo)
@@ -143,6 +146,15 @@ def list_photos(
                 models.Photo.description.ilike(f"%{q}%")
             )
         )
+
+    if sort_by == "popular":
+        query = query.outerjoin(models.Purchase).group_by(models.Photo.id).order_by(func.count(models.Purchase.id).desc())
+    elif sort_by == "price_asc":
+        query = query.order_by(models.Photo.price.asc())
+    elif sort_by == "price_desc":
+        query = query.order_by(models.Photo.price.desc())
+    elif sort_by == "date_new":
+        query = query.order_by(models.Photo.created_at.desc())
 
     photos = query.options(joinedload(models.Photo.categories)).all()
     return [build_photo_response(p) for p in photos]

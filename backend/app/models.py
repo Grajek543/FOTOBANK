@@ -36,12 +36,10 @@ class Photo(Base):
     description = Column(String(1024))
     category    = Column(String(100))  # możesz później usunąć
     price       = Column(Float, default=0.0)
-
     file_path   = Column(String(255))
     thumb_path  = Column(String(255))
-    file_data   = Column(LargeBinary)
-
-    owner_id = Column(Integer, ForeignKey("users.id"))
+    owner_id    = Column(Integer, ForeignKey("users.id"))
+    created_at  = Column(DateTime, default=datetime.utcnow)
 
     # relacje
     owner      = relationship("User", back_populates="photos")
