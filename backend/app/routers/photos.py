@@ -10,7 +10,7 @@ from typing import List
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Form, Query, Body, Request
 from fastapi.responses import FileResponse
 from starlette.staticfiles import StaticFiles
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, aliased
 from sqlalchemy import or_, func
 
 from app.database import SessionLocal
@@ -62,17 +62,17 @@ def build_photo_response(photo: models.Photo) -> schemas.PhotoOut:
     category_ids = [c.id for c in photo.categories]
 
     return schemas.PhotoOut(
-    id=photo.id,
-    title=photo.title,
-    description=photo.description,
-    category=",".join([c.name for c in photo.categories]),
-    price=photo.price,
-    owner_id=photo.owner_id,
-    file_url=f"{API_BASE}/media/{file_name}" if file_name else "",
-    thumb_url=f"{API_BASE}/media/thumbs/{thumb_name}" if thumb_name else None,
-    category_ids=category_ids,
-    purchases_number=len(photo.purchases)
-)
+        id=photo.id,
+        title=photo.title,
+        description=photo.description,
+        category=",".join([c.name for c in photo.categories]),
+        price=photo.price,
+        owner_id=photo.owner_id,
+        file_url=f"{API_BASE}/media/{file_name}" if file_name else "",
+        thumb_url=f"{API_BASE}/media/thumbs/{thumb_name}" if thumb_name else None,
+        category_ids=category_ids,
+        purchases_number=len(photo.purchases)
+    )
 
 
 router = APIRouter(prefix="/photos", tags=["photos"])
@@ -130,15 +130,20 @@ async def upload_photos(
 
 @router.get("/", response_model=List[schemas.PhotoOut])
 def list_photos(
-    q: str = Query(default=None, description="Szukaj po tytule lub opisie"),
-    category_id: int = Query(default=None, description="ID kategorii"),
-    sort_by: str = Query(default=None, description="Sortowanie: 'popular', 'price_asc', 'price_desc', 'date_new'"),
+    q: str = Query(default=None),
+    category_ids: List[int] = Query(default=None, alias="category_ids"),
+    sort_by: str = Query(default=None),
+    price_min: float = Query(default=None),
+    price_max: float = Query(default=None),
     db: Session = Depends(get_db),
 ):
     query = db.query(models.Photo)
 
-    if category_id:
-        query = query.join(models.PhotoCategory).filter(models.PhotoCategory.category_id == category_id)
+    if category_ids:
+        for i, cat_id in enumerate(category_ids):
+            alias = aliased(models.PhotoCategory, name=f"pc_{i}")
+            query = query.join(alias, alias.photo_id == models.Photo.id)
+            query = query.filter(alias.category_id == cat_id)
     elif q:
         query = query.filter(
             or_(
@@ -146,6 +151,11 @@ def list_photos(
                 models.Photo.description.ilike(f"%{q}%")
             )
         )
+
+    if price_min is not None:
+        query = query.filter(models.Photo.price >= price_min)
+    if price_max is not None:
+        query = query.filter(models.Photo.price <= price_max)
 
     if sort_by == "popular":
         query = query.outerjoin(models.Purchase).group_by(models.Photo.id).order_by(func.count(models.Purchase.id).desc())
@@ -156,7 +166,10 @@ def list_photos(
     elif sort_by == "date_new":
         query = query.order_by(models.Photo.created_at.desc())
 
-    photos = query.options(joinedload(models.Photo.categories)).all()
+    photos = query.options(
+        joinedload(models.Photo.categories),
+        joinedload(models.Photo.purchases)
+    ).all()
     return [build_photo_response(p) for p in photos]
 
 @router.get("/me", response_model=List[schemas.PhotoOut])
@@ -238,7 +251,5 @@ def get_photo(photo_id: int, db: Session = Depends(get_db)):
         "file_url": photo.file_path,
         "thumb_url": photo.thumb_path,
     }
-
-
 
 router.mount("/media", StaticFiles(directory="media"), name="media")

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 
 import Navbar from "./components/Navbar";
-import CategoriesBar from "./components/CategoriesBar";
 import Footer from "./components/Footer";
 
 import Home from "./pages/Home";
@@ -34,7 +33,6 @@ function AppContent() {
         isAuthenticated={isAuthenticated}
         setIsAuthenticated={setIsAuthenticated}
       />
-      {location.pathname === "/" && <CategoriesBar />}
       <main className="flex-grow px-6 py-4">
         <Routes>
           <Route path="/" element={<Home />} />
