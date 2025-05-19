@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react"; 
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 
 import Navbar from "./components/Navbar";
 import CategoriesBar from "./components/CategoriesBar";
@@ -19,10 +19,13 @@ import Gallery from './components/Gallery';
 function AppContent() {
   const location = useLocation();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userRole, setUserRole] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
+    const role = localStorage.getItem("role");
     setIsAuthenticated(!!token); 
+    setUserRole(role);
   }, [location]);
 
   return (
@@ -42,7 +45,10 @@ function AppContent() {
           <Route path="/account" element={<Account />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/cart" element={<Cart />} />
-          <Route path="/admin" element={<AdminPanel />} /> 
+          <Route 
+            path="/admin" 
+            element={userRole === "admin" ? <AdminPanel /> : <Navigate to="/" />} 
+          />
           <Route path="/photo/:photoId" element={<PhotoDetails />} />
           <Route path="*" element={<div>404 w React Router / brak dopasowanej ścieżki</div>} />
         </Routes>
@@ -61,4 +67,3 @@ function App() {
 }
 
 export default App;
-

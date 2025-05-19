@@ -24,6 +24,7 @@ class User(Base):
     # relacje
     photos     = relationship("Photo",    back_populates="owner")
     purchases  = relationship("Purchase", back_populates="user")
+    cart = relationship("Cart", back_populates="user", uselist=False)
 
 
 # --------------------------- Photo --------------------------
@@ -79,3 +80,24 @@ class PhotoCategory(Base):
     __tablename__ = "photo_categories"
     photo_id = Column(Integer, ForeignKey("photos.id"), primary_key=True)
     category_id = Column(Integer, ForeignKey("categories.id"), primary_key=True)
+
+
+# --------------------------- Cart -----------------------
+
+class Cart(Base):
+    __tablename__ = "cart"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+
+    user = relationship("User", back_populates="cart")
+    items = relationship("CartItem", back_populates="cart", cascade="all, delete")
+
+
+class CartItem(Base):
+    __tablename__ = "cart_items"
+    id = Column(Integer, primary_key=True, index=True)
+    cart_id = Column(Integer, ForeignKey("cart.id"))
+    photo_id = Column(Integer, ForeignKey("photos.id"))
+
+    cart = relationship("Cart", back_populates="items")
+    photo = relationship("Photo")

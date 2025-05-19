@@ -207,11 +207,26 @@ def update_photo(
     db.refresh(photo)
     return build_photo_response(photo)
 
-@router.get("/{photo_id}", response_model=schemas.PhotoOut)
+@router.get("/{photo_id}")
 def get_photo(photo_id: int, db: Session = Depends(get_db)):
-    photo = db.query(models.Photo).filter(models.Photo.id == photo_id).first()
+    photo = db.query(models.Photo).options(joinedload(models.Photo.categories), joinedload(models.Photo.owner)).filter(models.Photo.id == photo_id).first()
     if not photo:
-        raise HTTPException(404, "Zdjęcie nie znalezione")
-    return build_photo_response(photo)
+        raise HTTPException(status_code=404, detail="Zdjęcie nie znalezione")
+
+    category_names = [cat.name for cat in photo.categories] if photo.categories else []
+
+    return {
+        "id": photo.id,
+        "title": photo.title,
+        "description": photo.description,
+        "categories": category_names,
+        "price": photo.price,
+        "owner_id": photo.owner_id,
+        "owner_username": photo.owner.username if photo.owner else "Brak",
+        "file_url": photo.file_path,
+        "thumb_url": photo.thumb_path,
+    }
+
+
 
 router.mount("/media", StaticFiles(directory="media"), name="media")
