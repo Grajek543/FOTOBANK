@@ -53,8 +53,11 @@ class PhotoBase(BaseModel):
     thumb_path: Optional[str] = None
 
 
-class PhotoCreate(PhotoBase):
-    pass
+class PhotoCreate(BaseModel):
+    title: str
+    description: str
+    category: List[str]
+    price: float
 
 
 class PhotoUpdate(BaseModel):

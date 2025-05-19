@@ -8,7 +8,6 @@ import Footer from "./components/Footer";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import UploadPhoto from "./pages/UploadPhoto";
 import Account from "./pages/Account";
 import Settings from "./pages/Settings";
 import Cart from "./pages/Cart";
@@ -39,7 +38,6 @@ function AppContent() {
           <Route path="/login" element={<Login />} />
           <Route path="/gallery" element={<Gallery />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/upload" element={<UploadPhoto />} />
           <Route path="/myphotos" element={<MyPhotos />} />
           <Route path="/account" element={<Account />} />
           <Route path="/settings" element={<Settings />} />

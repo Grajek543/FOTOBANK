@@ -1,4 +1,3 @@
-// src/pages/MyPhotos.js
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
 import PhotoCard from "../components/PhotoCard";
@@ -10,6 +9,7 @@ export default function MyPhotos() {
   const [files, setFiles] = useState([]);
   const [photoData, setPhotoData] = useState([]);
   const [availableCategories, setAvailableCategories] = useState([]);
+  const [progress, setProgress] = useState({});
   const token = localStorage.getItem("access_token");
   const inputRef = useRef(null);
 
@@ -35,6 +35,7 @@ export default function MyPhotos() {
   const handleSelect = (e) => {
     const selected = [...e.target.files];
     setFiles(selected);
+    setProgress({});
     setPhotoData(
       selected.map((file) => ({
         title: file.name,
@@ -69,25 +70,32 @@ export default function MyPhotos() {
     if (!files.length || !token) return;
 
     try {
-      const form = new FormData();
-      files.forEach((file, idx) => {
-        form.append("files", file);
+      for (let idx = 0; idx < files.length; idx++) {
+        const form = new FormData();
         form.append("titles", photoData[idx].title);
         form.append("descriptions", photoData[idx].description);
         form.append("price", photoData[idx].price || 0);
-        photoData[idx].category_ids.forEach((id) =>
-          form.append("category_ids", id)
-        );
-      });
+        form.append("files", files[idx]);
 
-      await axios.post(`${API_URL}/photos/upload`, form, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        photoData[idx].category_ids.forEach((catId) =>
+          form.append("category_ids", catId)
+        );
+
+        await axios.post(`${API_URL}/photos/upload`, form, {
+          headers: { Authorization: `Bearer ${token}` },
+          onUploadProgress: (e) => {
+            const percent = Math.round((e.loaded * 100) / e.total);
+            setProgress((prev) => ({ ...prev, [idx]: percent }));
+          },
+        });
+      }
 
       setFiles([]);
       setPhotoData([]);
+      setProgress({});
       if (inputRef.current) inputRef.current.value = "";
       fetchPhotos();
+      alert("Wysłano!");
     } catch (err) {
       console.error("uploadMany –", err.response?.status, err.response?.data);
       alert("Błąd uploadu.");
@@ -111,7 +119,7 @@ export default function MyPhotos() {
         {files.map((file, idx) => (
           <div key={file.name} className="border p-4 rounded bg-white shadow space-y-2">
             <h2 className="font-semibold">{file.name}</h2>
-            <div className="text-sm font-medium">Nazwa:</div>
+
             <input
               type="text"
               value={photoData[idx]?.title}
@@ -126,7 +134,7 @@ export default function MyPhotos() {
               placeholder="Opis"
               className="w-full border p-2 rounded"
             />
-            <div className="text-sm font-medium">Cena:</div>
+
             <input
               type="number"
               value={photoData[idx]?.price}
@@ -156,7 +164,7 @@ export default function MyPhotos() {
         ))}
 
         {files.length > 0 && (
-          <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg">
+          <button className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg">
             Wyślij ({files.length})
           </button>
         )}

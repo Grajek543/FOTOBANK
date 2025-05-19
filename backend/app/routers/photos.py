@@ -7,7 +7,7 @@ import mimetypes
 import subprocess
 from typing import List
 
-from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Form, Query, Body
+from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Form, Query, Body, Request
 from fastapi.responses import FileResponse
 from starlette.staticfiles import StaticFiles
 from sqlalchemy.orm import Session, joinedload
@@ -65,7 +65,7 @@ def build_photo_response(photo: models.Photo) -> schemas.PhotoOut:
         id=photo.id,
         title=photo.title,
         description=photo.description,
-        category=photo.category,
+        category=",".join([c.name for c in photo.categories]),
         price=photo.price,
         owner_id=photo.owner_id,
         file_url=f"{API_BASE}/media/{file_name}" if file_name else "",
@@ -73,15 +73,14 @@ def build_photo_response(photo: models.Photo) -> schemas.PhotoOut:
         category_ids=category_ids
     )
 
-
 router = APIRouter(prefix="/photos", tags=["photos"])
 
 @router.post("/upload", response_model=List[schemas.PhotoOut])
 async def upload_photos(
-    category_ids: List[int] = Form(...),
-    price: float = Form(...),
+    request: Request,
     titles: List[str] = Form(...),
     descriptions: List[str] = Form(...),
+    price: float = Form(...),
     files: List[UploadFile] = File(...),
     user_id: int = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -89,7 +88,9 @@ async def upload_photos(
     if len(files) != len(titles) or len(files) != len(descriptions):
         raise HTTPException(400, "Liczba tytułów/opisów musi odpowiadać liczbie plików")
 
+    form_data = await request.form()
     output: List[schemas.PhotoOut] = []
+
     for i, file in enumerate(files):
         if file.content_type not in ALLOWED_TYPES:
             continue
@@ -107,7 +108,6 @@ async def upload_photos(
         photo = models.Photo(
             title=titles[i],
             description=descriptions[i],
-            category="",  # nieużywane, można usunąć z modelu
             price=price,
             file_path=str(file_full_path),
             thumb_path=str(thumb_full_path) if thumb_full_path.exists() else None,
@@ -116,14 +116,14 @@ async def upload_photos(
         db.add(photo)
         db.flush()
 
+        category_ids = form_data.getlist("category_ids")
         for cat_id in category_ids:
-            db.add(models.PhotoCategory(photo_id=photo.id, category_id=cat_id))
+            db.add(models.PhotoCategory(photo_id=photo.id, category_id=int(cat_id)))
 
         output.append(build_photo_response(photo))
 
     db.commit()
     return output
-
 
 
 @router.get("/", response_model=List[schemas.PhotoOut])
@@ -146,7 +146,6 @@ def list_photos(
 
     photos = query.options(joinedload(models.Photo.categories)).all()
     return [build_photo_response(p) for p in photos]
-
 
 @router.get("/me", response_model=List[schemas.PhotoOut])
 def get_my_photos(user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -195,13 +194,11 @@ def update_photo(
     if not photo:
         raise HTTPException(404, "Zdjęcie nie znalezione lub brak dostępu")
 
-    # aktualizacja podstawowych pól
     if photo_data.title is not None:
         photo.title = photo_data.title
     if photo_data.description is not None:
         photo.description = photo_data.description
 
-    # usuń stare kategorie i dodaj nowe
     db.query(models.PhotoCategory).filter(models.PhotoCategory.photo_id == photo.id).delete()
     for cat_id in category_ids:
         db.add(models.PhotoCategory(photo_id=photo.id, category_id=cat_id))
