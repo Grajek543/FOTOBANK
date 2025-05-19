@@ -17,7 +17,9 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
-    banned: bool = False                # domyślnie konto nie­zablokowane
+    banned: bool = False
+    full_banned: bool = False
+
 
 
 class UserLogin(BaseModel):
@@ -36,6 +38,8 @@ class UserRoleUpdate(BaseModel):
 class UserRead(UserBase):
     id: int
     banned: bool
+    full_banned: bool = False
+
 
     class Config:
         from_attributes = True           # Pydantic v2 (odpowiednik orm_mode)

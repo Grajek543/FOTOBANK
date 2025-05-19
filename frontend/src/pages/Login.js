@@ -24,12 +24,15 @@ function Login() {
       })
       .catch((err) => {
         console.error(err);
-        if (err.response?.status === 401) {
-          alert("Nieprawidłowy login lub hasło.");
+        if (err.response?.status === 403) {
+        alert("Twoje konto zostało zablokowane!!!");
+        } else if (err.response?.status === 401) {
+        alert("Nieprawidłowy login lub hasło.");
         } else {
-          alert("Błąd logowania");
+        alert("Błąd logowania");
         }
-      });
+  });
+
   };
 
   return (

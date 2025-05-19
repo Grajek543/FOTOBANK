@@ -18,6 +18,8 @@ class User(Base):
     role            = Column(String(50), default="user")
     username        = Column(String(255))
     banned          = Column(Boolean, default=False, nullable=False)
+    full_banned     = Column(Boolean, default=False, nullable=False)
+
 
     # relacje
     photos     = relationship("Photo",    back_populates="owner")

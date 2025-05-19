@@ -2,7 +2,7 @@
 from datetime import datetime, timedelta
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from passlib.context import CryptContext
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -39,6 +39,9 @@ class RefreshRequest(BaseModel):
 
 class BanStatus(BaseModel):
     banned: bool
+
+class FullBanStatus(BaseModel):
+    full_banned: bool
 
 
 # --------------------------------------------------------------------
@@ -87,15 +90,19 @@ def register_user(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
 @router.post("/login")
 def login(creds: schemas.UserLogin, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.email == creds.email).first()
+
     if not user or not pwd_context.verify(creds.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Nieprawidłowe dane logowania.")
 
-    # UWAGA: zablokowani użytkownicy mogą się zalogować – blokujemy tylko upload
+    if user.full_banned:
+        raise HTTPException(status_code=403, detail="Twoje konto jest zablokowane!")
+
     access_token = create_access_token(
         data={"sub": str(user.id), "token_type": "access"},
         expires_delta=timedelta(minutes=30),
     )
     refresh_token = create_refresh_token(user.id)
+
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
@@ -104,6 +111,7 @@ def login(creds: schemas.UserLogin, db: Session = Depends(get_db)):
         "role": user.role,
         "banned": user.banned,
     }
+
 
 
 @router.post("/refresh", response_model=TokenResponse)
@@ -223,3 +231,20 @@ def set_ban_status(
     db.commit()
     db.refresh(user)
     return user
+
+@router.put("/full-ban/{user_id}", response_model=schemas.UserRead)
+def toggle_full_ban(
+    user_id: int,
+    status: FullBanStatus,
+    db: Session = Depends(get_db),
+    admin_user: models.User = Depends(check_admin),
+):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.full_banned = status.full_banned
+    db.commit()
+    db.refresh(user)
+    return user
+
+

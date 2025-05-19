@@ -47,6 +47,21 @@ function AdminPanel() {
     .catch(() => alert("Nie udało się zmienić blokady."));
 };
 
+  /* ----------- full blokada ----------- */
+  const toggleFullBan = (id, full_banned) => {
+  const confirmText = full_banned
+    ? `Czy na pewno chcesz ODBLOKOWAĆ całkowicie użytkownika o ID ${id}?`
+    : `Czy na pewno chcesz CAŁKOWICIE ZABLOKOWAĆ użytkownika o ID ${id}?`;
+
+  if (!window.confirm(confirmText)) return;
+
+  api
+    .put(`/users/full-ban/${id}`, { full_banned: !full_banned })
+    .then((res) => setUsers(users.map((u) => (u.id === id ? res.data : u))))
+    .catch(() => alert("Nie udało się zmienić pełnej blokady."));
+};
+
+
 
   /* ----------- UI ----------- */
   return (
@@ -60,7 +75,8 @@ function AdminPanel() {
             <th className="p-2 border">Email</th>
             <th className="p-2 border">Username</th>
             <th className="p-2 border">Rola</th>
-            <th className="p-2 border">Blokada</th>
+            <th className="p-2 border">Blokada przesyłania zdjęć</th>
+            <th className="p-2 border">Pełna blokada konta</th>
             <th className="p-2 border">Ustaw rolę</th>
           </tr>
         </thead>
@@ -80,6 +96,16 @@ function AdminPanel() {
                   onChange={() => toggleBan(u.id, u.banned)}
                 />
               </td>
+
+              {/* full blokada */}
+              <td className="p-2 border">
+               <input
+                 type="checkbox"
+                 checked={u.full_banned}
+                 onChange={() => toggleFullBan(u.id, u.full_banned)}
+                />
+              </td>
+
 
               {/* dwa szybkie przyciski roli */}
               <td className="p-2 border space-x-2">

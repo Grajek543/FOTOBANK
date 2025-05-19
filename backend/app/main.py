@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import models
 from app.database import engine, Base
-from app.routers import users, photos         # ← zostaje
+from app.routers import users, photos, users
 from app.routers.upload_router import router as upload_router   # ← DODAJ
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
@@ -20,6 +20,7 @@ app.include_router(users.router,   prefix="/users",  tags=["Users"])
 # ↘ jeśli w photos.router jest już  prefix="/photos",
 #   to nie podajemy go drugi raz:
 app.include_router(photos.router,  tags=["Photos"])
+app.include_router(users.router)
 
 # ↘  upload_router też ma prefix="/photos" w definicji
 
