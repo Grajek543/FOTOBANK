@@ -64,6 +64,17 @@ function AdminPanel() {
     .catch(() => alert("Nie udało się zmienić pełnej blokady."));
 };
 
+/* ----------- usuwanie konta ----------- */
+const deleteUser = (id) => {
+  const confirmText = `Czy na pewno chcesz USUNĄĆ użytkownika o ID ${id}? Tej operacji nie można cofnąć!`;
+  if (!window.confirm(confirmText)) return;
+
+  api
+    .delete(`/users/delete/${id}`)
+    .then(() => setUsers(users.filter((u) => u.id !== id)))
+    .catch(() => alert("Nie udało się usunąć użytkownika."));
+};
+
 
 
   /* ----------- UI ----------- */
@@ -81,6 +92,7 @@ function AdminPanel() {
             <th className="p-2 border">Blokada przesyłania zdjęć</th>
             <th className="p-2 border">Pełna blokada konta</th>
             <th className="p-2 border">Ustaw rolę</th>
+            <th className="p-2 border">Usuń konto</th>
           </tr>
         </thead>
         <tbody>
@@ -133,6 +145,15 @@ function AdminPanel() {
                   user
                 </button>
               </td>
+              <td className="p-2 border">
+              <button
+                onClick={() => deleteUser(u.id)}
+                  className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
+                >
+                Usuń
+              </button>
+              </td>
+
             </tr>
           ))}
         </tbody>

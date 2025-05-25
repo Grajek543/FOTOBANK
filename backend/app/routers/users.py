@@ -10,6 +10,7 @@ import random
 import smtplib
 from email.mime.text import MIMEText
 
+
 from app import models, schemas
 from app.database import SessionLocal
 from app.dependencies import get_current_user, check_admin
@@ -335,4 +336,13 @@ def reset_password(data: PasswordReset, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Hasło zostało zaktualizowane."}
 
+# ----------------------------- USUWANIE UŻYTKOWNIKA -----------------------------
+@router.delete("/users/delete/{user_id}")
+def delete_user(user_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(check_admin)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    db.delete(user)
+    db.commit()
+    return {"detail": "User deleted"}
 
