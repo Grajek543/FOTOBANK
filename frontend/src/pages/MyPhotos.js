@@ -117,6 +117,9 @@ export default function MyPhotos() {
         finishForm.append("description", photoData[idx].description);
         finishForm.append("category", "");
         finishForm.append("price", photoData[idx].price);
+        photoData[idx].category_ids.forEach((catId) =>
+          finishForm.append("category_ids", catId)
+        );
 
         await axios.post(`${API_URL}/photos/finish-upload`, finishForm, {
           headers: { Authorization: `Bearer ${token}` },

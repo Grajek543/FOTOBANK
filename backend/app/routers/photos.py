@@ -300,11 +300,14 @@ def finish_upload(
     upload_id: str = Form(...),
     title: str = Form(...),
     description: str = Form(...),
-    category: str = Form(...),
+    category: str = Form(...), 
     price: float = Form(...),
+    category_ids: List[int] = Form(default=[]),
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user)
 ):
+
+
     session = db.query(UploadSession).filter(and_(UploadSession.upload_id == upload_id, UploadSession.user_id == user_id)).first()
     if not session or session.is_finished:
         raise HTTPException(status_code=404, detail="Upload session invalid or already completed")
@@ -335,12 +338,18 @@ def finish_upload(
     )
 
     db.add(photo)
+    db.flush()
 
-    session.is_finished = True
+    for cat_id in category_ids:
+        db.add(models.PhotoCategory(photo_id=photo.id, category_id=cat_id))
+
+
+    db.delete(session)
     db.commit()
-    db.refresh(photo)
 
-    del upload_buffers[upload_id]
+    if upload_id in upload_buffers:
+        del upload_buffers[upload_id]
+
 
     return {
         "id": photo.id,
