@@ -19,6 +19,9 @@ class User(Base):
     username        = Column(String(255))
     banned          = Column(Boolean, default=False, nullable=False)
     full_banned     = Column(Boolean, default=False, nullable=False)
+    is_active       = Column(Boolean, default=False, nullable=False)
+    activation_code = Column(String(6), nullable=True)
+
 
 
     # relacje

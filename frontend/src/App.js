@@ -14,6 +14,8 @@ import AdminPanel from "./pages/AdminPanel";
 import MyPhotos from "./pages/MyPhotos";
 import PhotoDetails from "./pages/PhotoDetails";
 import Gallery from './components/Gallery';
+import Activate from "./pages/Activate";
+
 
 function AppContent() {
   const location = useLocation();
@@ -43,12 +45,14 @@ function AppContent() {
           <Route path="/account" element={<Account />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/cart" element={<Cart />} />
+          <Route path="/activate" element={<Activate />} />
           <Route 
             path="/admin" 
             element={userRole === "admin" ? <AdminPanel /> : <Navigate to="/" />} 
           />
           <Route path="/photo/:photoId" element={<PhotoDetails />} />
           <Route path="*" element={<div>404 w React Router / brak dopasowanej ścieżki</div>} />
+          
         </Routes>
       </main>
       <Footer />

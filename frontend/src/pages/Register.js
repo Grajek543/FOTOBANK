@@ -1,4 +1,4 @@
-//src/pages/Register.js
+// src/pages/Register.js
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -21,17 +21,9 @@ function Register() {
       })
       .then((res) => {
         console.log("Odpowiedź z backendu:", res.data);
-        alert("Konto założone!");
-
-        // jeśli backend nie zwraca tokena, można to wyłączyć
-        if (res.data.access_token) {
-          localStorage.setItem("access_token", res.data.access_token);
-        }
-        if (res.data.user_id) {
-          localStorage.setItem("user_id", res.data.user_id);
-        }
-
-        navigate("/account");
+        alert("Konto założone! Sprawdź e-mail i aktywuj konto.");
+        localStorage.setItem("pending_email", email);
+        navigate("/activate");
       })
       .catch((err) => {
         if (err.response) {

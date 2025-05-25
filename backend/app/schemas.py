@@ -39,6 +39,7 @@ class UserRead(UserBase):
     id: int
     banned: bool
     full_banned: bool = False
+    is_active: bool = False
 
 
     class Config:
