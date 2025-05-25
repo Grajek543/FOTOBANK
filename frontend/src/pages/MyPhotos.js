@@ -1,9 +1,10 @@
 //src/pages/MyPhotos.js
-
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
 import PhotoCard from "../components/PhotoCard";
+
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
+const CHUNK_SIZE = 1024 * 1024;
 
 export default function MyPhotos() {
   const [photos, setPhotos] = useState([]);
@@ -16,13 +17,13 @@ export default function MyPhotos() {
   const [me, setMe] = useState(null);
 
   useEffect(() => {
-  if (!token) return;
-  axios
-    .get(`${API_URL}/users/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    .then((res) => setMe(res.data))
-    .catch(console.error);
+    if (!token) return;
+    axios
+      .get(`${API_URL}/users/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => setMe(res.data))
+      .catch(console.error);
   }, [token]);
 
   useEffect(() => {
@@ -83,22 +84,42 @@ export default function MyPhotos() {
 
     try {
       for (let idx = 0; idx < files.length; idx++) {
-        const form = new FormData();
-        form.append("titles", photoData[idx].title);
-        form.append("descriptions", photoData[idx].description);
-        form.append("price", photoData[idx].price || 0);
-        form.append("files", files[idx]);
+        const file = files[idx];
+        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
 
-        photoData[idx].category_ids.forEach((catId) =>
-          form.append("category_ids", catId)
+        const startRes = await axios.post(
+          `${API_URL}/photos/start-upload`,
+          new URLSearchParams({ total_chunks: totalChunks }),
+          { headers: { Authorization: `Bearer ${token}` } }
         );
+        const uploadId = startRes.data.upload_id;
 
-        await axios.post(`${API_URL}/photos/upload`, form, {
+        for (let i = 0; i < totalChunks; i++) {
+          const blob = file.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+          const chunkForm = new FormData();
+          chunkForm.append("upload_id", uploadId);
+          chunkForm.append("chunk_index", i);
+          chunkForm.append("chunk", blob);
+
+          await axios.post(`${API_URL}/photos/upload-chunk`, chunkForm, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          setProgress((prev) => ({
+            ...prev,
+            [idx]: Math.round(((i + 1) / totalChunks) * 100),
+          }));
+        }
+
+        const finishForm = new FormData();
+        finishForm.append("upload_id", uploadId);
+        finishForm.append("title", photoData[idx].title);
+        finishForm.append("description", photoData[idx].description);
+        finishForm.append("category", "");
+        finishForm.append("price", photoData[idx].price);
+
+        await axios.post(`${API_URL}/photos/finish-upload`, finishForm, {
           headers: { Authorization: `Bearer ${token}` },
-          onUploadProgress: (e) => {
-            const percent = Math.round((e.loaded * 100) / e.total);
-            setProgress((prev) => ({ ...prev, [idx]: percent }));
-          },
         });
       }
 
@@ -119,75 +140,84 @@ export default function MyPhotos() {
       <h1 className="text-3xl font-bold">Moje zdjęcia</h1>
 
       {me?.banned ? (
-  <div className="text-red-600 font-semibold text-lg border p-4 rounded-lg bg-red-100">
-    Twoje konto ma zablokowaną możliwość dodawania nowych zdjęć.
-  </div>
-) : (
-  <form onSubmit={uploadMany} className="border p-4 rounded-xl space-y-6 shadow">
-    <input
-      ref={inputRef}
-      type="file"
-      multiple
-      accept="image/*,video/*"
-      onChange={handleSelect}
-      className="w-full border p-2 rounded-lg"
-    />
-
-    {files.map((file, idx) => (
-      <div key={file.name} className="border p-4 rounded bg-white shadow space-y-2">
-        <h2 className="font-semibold">{file.name}</h2>
-
-        <input
-          type="text"
-          value={photoData[idx]?.title}
-          onChange={(e) => updatePhotoField(idx, "title", e.target.value)}
-          placeholder="Tytuł"
-          className="w-full border p-2 rounded"
-        />
-
-        <textarea
-          value={photoData[idx]?.description}
-          onChange={(e) => updatePhotoField(idx, "description", e.target.value)}
-          placeholder="Opis"
-          className="w-full border p-2 rounded"
-        />
-
-        <input
-          type="number"
-          value={photoData[idx]?.price}
-          onChange={(e) =>
-            updatePhotoField(idx, "price", parseFloat(e.target.value))
-          }
-          placeholder="Cena"
-          className="w-32 border p-2 rounded"
-          min="0"
-          step="0.01"
-        />
-
-        <div className="text-sm font-medium">Kategorie:</div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 max-h-32 overflow-auto text-sm">
-          {availableCategories.map((cat) => (
-            <label key={cat.id} className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={photoData[idx]?.category_ids.includes(cat.id)}
-                onChange={() => toggleCategory(idx, cat.id)}
-              />
-              {cat.name}
-            </label>
-          ))}
+        <div className="text-red-600 font-semibold text-lg border p-4 rounded-lg bg-red-100">
+          Twoje konto ma zablokowaną możliwość dodawania nowych zdjęć.
         </div>
-      </div>
-    ))}
+      ) : (
+        <form onSubmit={uploadMany} className="border p-4 rounded-xl space-y-6 shadow">
+          <input
+            ref={inputRef}
+            type="file"
+            multiple
+            accept="image/*,video/*"
+            onChange={handleSelect}
+            className="w-full border p-2 rounded-lg"
+          />
 
-    {files.length > 0 && (
-      <button className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg">
-        Wyślij ({files.length})
-      </button>
-    )}
-  </form>
-)}
+          {files.map((file, idx) => (
+            <div key={file.name} className="border p-4 rounded bg-white shadow space-y-2">
+              <h2 className="font-semibold">{file.name}</h2>
 
+              <input
+                type="text"
+                value={photoData[idx]?.title}
+                onChange={(e) => updatePhotoField(idx, "title", e.target.value)}
+                placeholder="Tytuł"
+                className="w-full border p-2 rounded"
+              />
+
+              <textarea
+                value={photoData[idx]?.description}
+                onChange={(e) => updatePhotoField(idx, "description", e.target.value)}
+                placeholder="Opis"
+                className="w-full border p-2 rounded"
+              />
+
+              <input
+                type="number"
+                value={photoData[idx]?.price}
+                onChange={(e) => updatePhotoField(idx, "price", parseFloat(e.target.value))}
+                placeholder="Cena"
+                className="w-32 border p-2 rounded"
+                min="0"
+                step="0.01"
+              />
+
+              <div className="text-sm font-medium">Kategorie:</div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 max-h-32 overflow-auto text-sm">
+                {availableCategories.map((cat) => (
+                  <label key={cat.id} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={photoData[idx]?.category_ids.includes(cat.id)}
+                      onChange={() => toggleCategory(idx, cat.id)}
+                    />
+                    {cat.name}
+                  </label>
+                ))}
+              </div>
+
+              {progress[idx] && (
+                <div className="text-sm mt-2">
+                  Upload: {progress[idx]}%
+                  <div className="w-full bg-gray-200 h-2 rounded">
+                    <div
+                      className="bg-blue-600 h-2 rounded"
+                      style={{ width: `${progress[idx]}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {files.length > 0 && (
+            <button className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg">
+              Wyślij ({files.length})
+            </button>
+          )}
+        </form>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         {photos.map((p) => (

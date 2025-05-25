@@ -11,8 +11,10 @@ from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Form, Q
 from fastapi.responses import FileResponse
 from starlette.staticfiles import StaticFiles
 from sqlalchemy.orm import Session, joinedload, aliased
-from sqlalchemy import or_, func
+from sqlalchemy import or_, func, and_
 
+from app.schemas import PhotoOut
+from app.models import UploadSession, Photo
 from app.database import SessionLocal
 from app.dependencies import get_current_user
 from app import models, schemas
@@ -254,5 +256,119 @@ def get_photo(photo_id: int, db: Session = Depends(get_db)):
         "file_url": photo.file_path,
         "thumb_url": photo.thumb_path,
     }
+
+
+#UPLOAD
+@router.post("/start-upload")
+def start_upload(total_chunks: int = Form(...), db: Session = Depends(get_db), user_id: int = Depends(get_current_user)):
+    upload_id = str(uuid4())
+    session = UploadSession(
+        upload_id=upload_id,
+        user_id=user_id,
+        total_chunks=total_chunks,
+        received_chunks=0
+    )
+    db.add(session)
+    db.commit()
+    return {"upload_id": upload_id}
+
+upload_buffers = {} 
+
+@router.post("/upload-chunk")
+async def upload_chunk(
+    upload_id: str = Form(...),
+    chunk_index: int = Form(...),
+    chunk: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user)
+):
+    session = db.query(UploadSession).filter(and_(UploadSession.upload_id == upload_id, UploadSession.user_id == user_id)).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Upload session not found")
+
+    content = await chunk.read()
+    if upload_id not in upload_buffers:
+        upload_buffers[upload_id] = {}
+    upload_buffers[upload_id][chunk_index] = content
+    session.received_chunks = len(upload_buffers[upload_id])
+    db.commit()
+
+    return {"message": f"Received chunk {chunk_index}"}
+
+@router.post("/finish-upload", response_model=PhotoOut)
+def finish_upload(
+    upload_id: str = Form(...),
+    title: str = Form(...),
+    description: str = Form(...),
+    category: str = Form(...),
+    price: float = Form(...),
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user)
+):
+    session = db.query(UploadSession).filter(and_(UploadSession.upload_id == upload_id, UploadSession.user_id == user_id)).first()
+    if not session or session.is_finished:
+        raise HTTPException(status_code=404, detail="Upload session invalid or already completed")
+
+    chunks_dict = upload_buffers.get(upload_id)
+    if not chunks_dict or len(chunks_dict) != session.total_chunks:
+        raise HTTPException(status_code=400, detail="Not all chunks received")
+
+    ordered = [chunks_dict[i] for i in sorted(chunks_dict.keys())]
+    final_data = b''.join(ordered)
+
+    file_name = f"{uuid4().hex}.jpg"
+    file_path = MEDIA_DIR / file_name
+    with file_path.open("wb") as f:
+        f.write(final_data)
+
+    thumb_path = THUMBS_DIR / f"{file_path.stem}.jpg"
+    create_thumbnail(file_path, thumb_path)
+
+    photo = Photo(
+        title=title,
+        description=description,
+        category=category,
+        price=price,
+        file_path=str(file_path),
+        thumb_path=str(thumb_path),
+        owner_id=user_id
+    )
+
+    db.add(photo)
+
+    session.is_finished = True
+    db.commit()
+    db.refresh(photo)
+
+    del upload_buffers[upload_id]
+
+    return {
+        "id": photo.id,
+        "title": photo.title,
+        "description": photo.description,
+        "category": photo.category,
+        "price": photo.price,
+        "owner_id": photo.owner_id,
+        "owner_username": photo.owner.username if photo.owner else "Brak"
+    }
+
+
+@router.post("/{photo_id}/set-categories")
+def set_photo_categories(
+    photo_id: int,
+    category_ids: List[int] = Body(...),
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user)
+):
+    photo = db.query(models.Photo).filter(models.Photo.id == photo_id, models.Photo.owner_id == user_id).first()
+    if not photo:
+        raise HTTPException(404, "Zdjęcie nie znalezione lub brak dostępu")
+
+    db.query(models.PhotoCategory).filter(models.PhotoCategory.photo_id == photo_id).delete()
+    for cat_id in category_ids:
+        db.add(models.PhotoCategory(photo_id=photo_id, category_id=cat_id))
+
+    db.commit()
+    return {"message": "Kategorie zaktualizowane"}
 
 router.mount("/media", StaticFiles(directory="media"), name="media")
