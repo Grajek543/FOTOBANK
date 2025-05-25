@@ -1,6 +1,8 @@
+//src/pages/Settings.js
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
 function Settings() {
   const [username, setUsername] = useState("");
@@ -13,7 +15,7 @@ function Settings() {
     const token = localStorage.getItem("access_token");
     if (!token) return;
 
-    axios.get("http://localhost:8000/users/me", {
+    axios.get(`${API_URL}/users/me`, {
       headers: { Authorization: `Bearer ${token}` }
     })
     .then((res) => {
@@ -30,7 +32,7 @@ function Settings() {
     const token = localStorage.getItem("access_token");
     if (!token) return;
 
-    axios.put("http://localhost:8000/users/update", {
+    axios.put(`${API_URL}/users/update`, {
       username
     }, {
       headers: { Authorization: `Bearer ${token}` }
@@ -54,7 +56,7 @@ function Settings() {
     const token = localStorage.getItem("access_token");
     if (!token) return;
 
-    axios.put("http://localhost:8000/users/change-password", {
+    axios.put(`${API_URL}/users/change-password`, {
       old_password: oldPassword,
       new_password: newPassword
     }, {
@@ -82,7 +84,7 @@ function Settings() {
     const confirmed = window.confirm("Czy na pewno chcesz usunąć konto? Tej operacji nie można cofnąć.");
     if (!confirmed) return;
 
-    axios.delete("http://localhost:8000/users/delete", {
+    axios.delete(`${API_URL}/users/delete`, {
       headers: { Authorization: `Bearer ${token}` }
     })
     .then(() => {

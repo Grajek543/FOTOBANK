@@ -1,14 +1,17 @@
 // src/pages/AdminPanel.js
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
 function AdminPanel() {
   const [users, setUsers] = useState([]);
   const token = localStorage.getItem("access_token");
+  
+
 
   /* ----------- axios z tokenem ----------- */
   const api = axios.create({
-    baseURL: "http://127.0.0.1:8000",
+    baseURL: API_URL,
     headers: { Authorization: `Bearer ${token}` },
   });
 

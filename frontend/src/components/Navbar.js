@@ -1,7 +1,9 @@
+//src/components/Navbar.js
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { FaSearch, FaUserCircle, FaShoppingCart } from "react-icons/fa";
 import axios from "axios";
+const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
 export default function Navbar({ isAuthenticated, setIsAuthenticated }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -10,13 +12,15 @@ export default function Navbar({ isAuthenticated, setIsAuthenticated }) {
   const navigate = useNavigate();
   const location = useLocation();
   const dropdownRef = useRef(null);
+  
+
 
   useEffect(() => {
     if (isAuthenticated) {
       const token = localStorage.getItem("access_token");
 
       axios
-        .get("http://127.0.0.1:8000/users/me", {
+        .get(`${API_URL}/users/me`, {
           headers: { Authorization: `Bearer ${token}` },
         })
         .then((res) => setUser(res.data))

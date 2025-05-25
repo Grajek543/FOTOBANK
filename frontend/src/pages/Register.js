@@ -1,6 +1,8 @@
+//src/pages/Register.js
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
 function Register() {
   const [email, setEmail] = useState("");
@@ -12,7 +14,7 @@ function Register() {
   const handleRegister = (e) => {
     e.preventDefault();
     axios
-      .post("http://localhost:8000/users/register", {
+      .post(`${API_URL}/users/register`, {
         email,
         password,
         username,

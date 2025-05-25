@@ -1,11 +1,14 @@
-
+//src/pages/Account.js
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
 function Account() {
   const [userData, setUserData] = useState(null);
   const navigate = useNavigate();
+  
+
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
@@ -14,7 +17,7 @@ function Account() {
       return;
     }
 
-    axios.get("http://localhost:8000/users/me", {
+    axios.get(`${API_URL}/users/me`, {
       headers: {
         Authorization: `Bearer ${token}`
       }
