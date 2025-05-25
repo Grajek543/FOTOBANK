@@ -47,6 +47,9 @@ class ActivationRequest(BaseModel):
     email: str
     code: str
 
+class ResendRequest(BaseModel):
+    email: str
+
 
 # ----------------------------- DB SESSION -----------------------------
 def get_db():
@@ -249,3 +252,17 @@ def toggle_full_ban(user_id: int, status: FullBanStatus, db: Session = Depends(g
     db.commit()
     db.refresh(user)
     return user
+# ----------------------------- AKTYWACJA -----------------------------
+@router.post("/resend-code")
+def resend_activation_code(data: ResendRequest, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.email == data.email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Użytkownik nie istnieje.")
+    if user.is_active:
+        raise HTTPException(status_code=400, detail="Konto już aktywowane.")
+
+    new_code = f"{random.randint(100000, 999999)}"
+    user.activation_code = new_code
+    db.commit()
+    send_activation_email(user.email, new_code)
+    return {"message": "Kod aktywacyjny został wysłany ponownie."}

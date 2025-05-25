@@ -26,16 +26,26 @@ function Login() {
       .catch((err) => {
         console.error(err);
 
+        const detail = err.response?.data?.detail;
+
         if (err.response?.status === 403) {
-           alert(err.response.data.detail);
-        } else if (err.response?.status === 401) {
-            alert("Nieprawidłowy login lub hasło.");
-        } else {
-            alert("Błąd logowania");
+          alert(detail);
+
+        if (detail?.includes("nie zostało aktywowane")) {
+          if (window.confirm("Chcesz przejść do strony aktywacji konta?")) {
+            navigate("/activate");
+          }
         }
+      } else if (err.response?.status === 401) {
+        alert("Nieprawidłowy login lub hasło.");
+      } else {
+        alert("Błąd logowania");
+      }
+    });
 
 
-  });
+
+
 
   };
 

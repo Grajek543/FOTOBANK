@@ -4,16 +4,16 @@ import { useNavigate } from "react-router-dom";
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
 function Activate() {
-  const [code, setCode] = useState("");
   const [email, setEmail] = useState(localStorage.getItem("pending_email") || "");
+  const [code, setCode] = useState("");
   const navigate = useNavigate();
 
   const handleActivate = (e) => {
     e.preventDefault();
-    axios
-      .post(`${API_URL}/users/activate`, { email, code })
+
+    axios.post(`${API_URL}/users/activate`, { email, code })
       .then(() => {
-        alert("Konto zostało aktywowane! Możesz się teraz zalogować.");
+        alert("Konto aktywowane! Możesz się teraz zalogować.");
         localStorage.removeItem("pending_email");
         navigate("/login");
       })
@@ -23,10 +23,35 @@ function Activate() {
       });
   };
 
+  const resendCode = () => {
+    if (!email) {
+      alert("Podaj e-mail, aby wysłać kod.");
+      return;
+    }
+
+    axios.post(`${API_URL}/users/register`, {
+      email,
+      password: "DUMMY",
+      username: "DUMMY"
+    })
+    .then(() => {
+      alert("Nowy kod został wysłany na e-mail.");
+    })
+    .catch((err) => {
+      if (err.response?.status === 400 && err.response.data?.detail?.includes("istnieje")) {
+        axios.post(`${API_URL}/users/resend-code`, { email })
+          .then(() => alert("Kod aktywacyjny został wysłany ponownie."))
+          .catch(() => alert("Nie udało się wysłać kodu."));
+      } else {
+        alert("Błąd przy ponownym wysłaniu kodu.");
+      }
+    });
+  };
+
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-50">
-      <div className="bg-white shadow-md rounded-lg p-8 w-full max-w-md">
-        <h2 className="text-2xl font-bold mb-6 text-center">Aktywacja konta</h2>
+      <div className="bg-white shadow-md rounded-lg p-8 w-full max-w-md space-y-4">
+        <h2 className="text-2xl font-bold text-center">Aktywacja konta</h2>
         <form onSubmit={handleActivate} className="space-y-4">
           <div>
             <label className="block text-gray-700">Email</label>
@@ -55,6 +80,12 @@ function Activate() {
             Aktywuj konto
           </button>
         </form>
+        <button
+          onClick={resendCode}
+          className="w-full text-sm text-blue-600 hover:underline mt-2"
+        >
+          Wyślij kod jeszcze raz
+        </button>
       </div>
     </div>
   );
