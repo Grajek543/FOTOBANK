@@ -68,18 +68,53 @@ def create_refresh_token(user_id: int, expires_delta: Optional[timedelta] = None
 
 
 # ----------------------------- EMAIL -----------------------------
-def send_activation_email(to_email: str, code: str):
-    from email.mime.text import MIMEText
-    import smtplib
+def send_activation_email(to_email: str, code: str, purpose: str = "activation"):
+    if purpose == "activation":
+        subject = "FotoBank – Aktywacja konta"
+        body = f"""
+Cześć!
 
-    message = MIMEText(f"Twój kod aktywacyjny do FotoBank to: {code}")
-    message["Subject"] = "Aktywacja konta FotoBank"
+Dziękujemy za rejestrację w FotoBank.
+
+Twój kod aktywacyjny to: {code}
+
+Wprowadź go w aplikacji, aby aktywować konto.
+
+Pozdrawiamy,
+Zespół FotoBank
+"""
+    elif purpose == "reset":
+        subject = "FotoBank – Reset hasła"
+        body = f"""
+Cześć!
+
+Otrzymaliśmy prośbę o zresetowanie hasła do Twojego konta w FotoBank.
+
+Twój kod resetujący to: {code}
+
+Wprowadź go w aplikacji, aby ustawić nowe hasło.
+
+Jeśli to nie Ty prosiłeś o reset hasła, zignoruj tę wiadomość.
+
+Pozdrawiamy,
+Zespół FotoBank
+"""
+    else:
+        raise ValueError("Nieznany typ wiadomości e-mail (activation/reset).")
+
+    message = MIMEText(body)
+    message["Subject"] = subject
     message["From"] = EMAIL_USER
     message["To"] = to_email
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-        server.login(EMAIL_USER, EMAIL_PASS)
-        server.send_message(message)
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(EMAIL_USER, EMAIL_PASS)
+            server.send_message(message)
+            print(f"[EMAIL] ({purpose}) wysłany do: {to_email} (kod: {code})")
+    except Exception as e:
+        print(f"[ERROR] Nie udało się wysłać maila ({purpose}) do {to_email}: {e}")
+
 
 
 
@@ -106,7 +141,7 @@ def register_user(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
 
-    send_activation_email(new_user.email, code)
+    send_activation_email(user.email, new_code, purpose="activation")
 
     return new_user
 
@@ -264,5 +299,40 @@ def resend_activation_code(data: ResendRequest, db: Session = Depends(get_db)):
     new_code = f"{random.randint(100000, 999999)}"
     user.activation_code = new_code
     db.commit()
-    send_activation_email(user.email, new_code)
+    send_activation_email(user.email, new_code, purpose="activation")
     return {"message": "Kod aktywacyjny został wysłany ponownie."}
+
+class ResetPasswordRequest(BaseModel):
+    email: str
+
+# ----------------------------- PRZYWRACANIE HASŁA -----------------------------
+@router.post("/request-password-reset")
+def request_password_reset(data: ResetPasswordRequest, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.email == data.email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Użytkownik nie istnieje.")
+
+    code = f"{random.randint(100000, 999999)}"
+    user.activation_code = code
+    db.commit()
+    send_activation_email(user.email, code, purpose="reset")
+    return {"message": "Kod resetowania został wysłany na e-mail."}
+
+
+class PasswordReset(BaseModel):
+    email: str
+    code: str
+    new_password: str
+
+@router.post("/reset-password")
+def reset_password(data: PasswordReset, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.email == data.email).first()
+    if not user or user.activation_code != data.code:
+        raise HTTPException(status_code=400, detail="Nieprawidłowy kod resetujący lub e-mail.")
+
+    user.hashed_password = pwd_context.hash(data.new_password)
+    user.activation_code = None
+    db.commit()
+    return {"message": "Hasło zostało zaktualizowane."}
+
+

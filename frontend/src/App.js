@@ -15,6 +15,9 @@ import MyPhotos from "./pages/MyPhotos";
 import PhotoDetails from "./pages/PhotoDetails";
 import Gallery from './components/Gallery';
 import Activate from "./pages/Activate";
+import RequestReset from "./pages/RequestReset";
+import ResetPassword from "./pages/ResetPassword";
+
 
 
 function AppContent() {
@@ -46,6 +49,9 @@ function AppContent() {
           <Route path="/settings" element={<Settings />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/activate" element={<Activate />} />
+          <Route path="/forgot" element={<RequestReset />} />
+          <Route path="/reset" element={<ResetPassword />} />
+
           <Route 
             path="/admin" 
             element={userRole === "admin" ? <AdminPanel /> : <Navigate to="/" />} 

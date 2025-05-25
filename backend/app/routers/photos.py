@@ -319,7 +319,9 @@ def finish_upload(
     ordered = [chunks_dict[i] for i in sorted(chunks_dict.keys())]
     final_data = b''.join(ordered)
 
-    file_name = f"{uuid4().hex}.jpg"
+    ext = Path(title).suffix.lower() or ".bin"
+    file_name = f"{uuid4().hex}{ext}"
+
     file_path = MEDIA_DIR / file_name
     with file_path.open("wb") as f:
         f.write(final_data)

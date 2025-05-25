@@ -81,6 +81,12 @@ function Login() {
             Zaloguj się
           </button>
         </form>
+        <p className="text-sm text-center mt-4">
+          <a href="/forgot" className="text-blue-600 hover:underline">
+            Nie pamiętasz hasła?
+          </a>
+        </p>
+
       </div>
     </div>
   );
