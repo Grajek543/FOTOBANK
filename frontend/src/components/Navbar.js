@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { FaSearch, FaUserCircle, FaShoppingCart } from "react-icons/fa";
-import axios from "axios";
+import api from "../api/axios";
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
 export default function Navbar({ isAuthenticated, setIsAuthenticated }) {
@@ -19,7 +19,7 @@ export default function Navbar({ isAuthenticated, setIsAuthenticated }) {
     if (isAuthenticated) {
       const token = localStorage.getItem("access_token");
 
-      axios
+      api
         .get(`${API_URL}/users/me`, {
           headers: { Authorization: `Bearer ${token}` },
         })

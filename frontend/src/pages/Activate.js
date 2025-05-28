@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import axios from "axios";
+import api from "../api/axios";
 import { useNavigate } from "react-router-dom";
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
@@ -11,7 +11,7 @@ function Activate() {
   const handleActivate = (e) => {
     e.preventDefault();
 
-    axios.post(`${API_URL}/users/activate`, { email, code })
+    api.post(`${API_URL}/users/activate`, { email, code })
       .then(() => {
         alert("Konto aktywowane! Możesz się teraz zalogować.");
         localStorage.removeItem("pending_email");
@@ -29,7 +29,7 @@ function Activate() {
       return;
     }
 
-    axios.post(`${API_URL}/users/register`, {
+    api.post(`${API_URL}/users/register`, {
       email,
       password: "DUMMY",
       username: "DUMMY"
@@ -39,7 +39,7 @@ function Activate() {
     })
     .catch((err) => {
       if (err.response?.status === 400 && err.response.data?.detail?.includes("istnieje")) {
-        axios.post(`${API_URL}/users/resend-code`, { email })
+        api.post(`${API_URL}/users/resend-code`, { email })
           .then(() => alert("Kod aktywacyjny został wysłany ponownie."))
           .catch(() => alert("Nie udało się wysłać kodu."));
       } else {

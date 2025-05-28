@@ -1,6 +1,6 @@
 // src/pages/AdminPanel.js
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../api/axios";
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
 function AdminPanel() {
@@ -9,11 +9,8 @@ function AdminPanel() {
   
 
 
-  /* ----------- axios z tokenem ----------- */
-  const api = axios.create({
-    baseURL: API_URL,
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  /* ----------- api z tokenem ----------- */
+  api.get("/users/all")
 
   /* ----------- pobierz listę ----------- */
   useEffect(() => {

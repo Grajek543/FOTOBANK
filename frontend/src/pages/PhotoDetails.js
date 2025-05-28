@@ -1,7 +1,7 @@
 //src/pages/PhotoDetails.js
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import axios from "axios";
+import api from "../api/axios";
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
 function PhotoDetails() {
@@ -12,7 +12,7 @@ function PhotoDetails() {
   useEffect(() => {
     const token = localStorage.getItem("access_token");
     setIsLoggedIn(!!token);
-    axios
+    api
       .get(`${API_URL}/photos/${photoId}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       })
@@ -24,7 +24,7 @@ function PhotoDetails() {
   const token = localStorage.getItem("access_token");
   if (!token) return;
 
-  axios
+  api
     .post(`${API_URL}/cart/add/${photoId}`, null, {
       headers: { Authorization: `Bearer ${token}` },
     })

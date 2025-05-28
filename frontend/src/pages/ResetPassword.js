@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import axios from "axios";
+import api from "../api/axios";
 import { useNavigate } from "react-router-dom";
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
@@ -12,7 +12,7 @@ function ResetPassword() {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    axios.post(`${API_URL}/users/reset-password`, {
+    api.post(`${API_URL}/users/reset-password`, {
       email,
       code,
       new_password: newPassword

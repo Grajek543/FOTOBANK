@@ -1,6 +1,6 @@
 // src/components/PhotoCard.jsx
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../api/axios";
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
 /**
@@ -16,7 +16,7 @@ export default function PhotoCard({ photo, onUpdated }) {
   const token = localStorage.getItem("access_token");
 
   useEffect(() => {
-    axios
+    api
       .get(`${API_URL}/photos/categories`)
       .then((res) => setAvailableCategories(res.data))
       .catch(console.error);
@@ -43,7 +43,7 @@ export default function PhotoCard({ photo, onUpdated }) {
 
   const saveEdit = async () => {
     try {
-      await axios.put(
+      await api.put(
         `${API_URL}/photos/${photo.id}`,
         {
           photo_data: {
@@ -68,7 +68,7 @@ export default function PhotoCard({ photo, onUpdated }) {
   const deletePhoto = async () => {
     if (!window.confirm("Na pewno chcesz usunąć ten plik?")) return;
     try {
-      await axios.delete(`${API_URL}/photos/${photo.id}`, {
+      await api.delete(`${API_URL}/photos/${photo.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       onUpdated?.();

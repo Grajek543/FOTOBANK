@@ -1,6 +1,6 @@
 // src/pages/MyPhotos.js
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import axios from "axios";
+import api from "../api/axios";
 import PhotoCard from "../components/PhotoCard";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
@@ -19,7 +19,7 @@ export default function MyPhotos() {
 
   useEffect(() => {
     if (!token) return;
-    axios
+    api
       .get(`${API_URL}/users/me`, {
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -28,7 +28,7 @@ export default function MyPhotos() {
   }, [token]);
 
   useEffect(() => {
-    axios
+    api
       .get(`${API_URL}/photos/categories`)
       .then((res) => setAvailableCategories(res.data))
       .catch(console.error);
@@ -36,7 +36,7 @@ export default function MyPhotos() {
 
   const refreshPhotoCount = useCallback(() => {
     if (!token) return;
-    axios
+    api
       .get(`${API_URL}/photos/me/count`, {
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -47,7 +47,7 @@ export default function MyPhotos() {
 
   const fetchPhotos = useCallback(() => {
     if (!token) return;
-    axios
+    api
       .get(`${API_URL}/photos/me`, {
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -107,7 +107,7 @@ export default function MyPhotos() {
         const file = files[idx];
         const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
 
-        const startRes = await axios.post(
+        const startRes = await api.post(
           `${API_URL}/photos/start-upload`,
           new URLSearchParams({ total_chunks: totalChunks }),
           { headers: { Authorization: `Bearer ${token}` } }
@@ -121,7 +121,7 @@ export default function MyPhotos() {
           chunkForm.append("chunk_index", i);
           chunkForm.append("chunk", blob);
 
-          await axios.post(`${API_URL}/photos/upload-chunk`, chunkForm, {
+          await api.post(`${API_URL}/photos/upload-chunk`, chunkForm, {
             headers: { Authorization: `Bearer ${token}` },
           });
 
@@ -141,7 +141,7 @@ export default function MyPhotos() {
           finishForm.append("category_ids", catId)
         );
 
-        await axios.post(`${API_URL}/photos/finish-upload`, finishForm, {
+        await api.post(`${API_URL}/photos/finish-upload`, finishForm, {
           headers: { Authorization: `Bearer ${token}` },
         });
       }

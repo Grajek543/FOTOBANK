@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import axios from "axios";
+import api from "../api/axios";
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
 function RequestReset() {
@@ -7,7 +7,7 @@ function RequestReset() {
 
   const handleRequest = (e) => {
     e.preventDefault();
-    axios.post(`${API_URL}/users/request-password-reset`, { email })
+    api.post(`${API_URL}/users/request-password-reset`, { email })
       .then(() => alert("Kod resetujący wysłany na e-mail."))
       .catch(() => alert("Nie udało się wysłać kodu."));
   };

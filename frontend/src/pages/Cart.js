@@ -1,6 +1,6 @@
 //src/pages/Cart.js
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../api/axios";
 import { Link } from "react-router-dom";
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
@@ -12,7 +12,7 @@ function Cart() {
 
   useEffect(() => {
     if (!token) return;
-    axios
+    api
       .get(`${API_URL}/cart/`, {
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -23,7 +23,7 @@ function Cart() {
   useEffect(() => {
     const fetchPhotos = async () => {
       const promises = photoIds.map((id) =>
-        axios.get(`${API_URL}/photos/${id}`, {
+        api.get(`${API_URL}/photos/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         })
       );
@@ -48,7 +48,7 @@ function Cart() {
   }, [photoIds]);
 
   const handleRemove = (photoId) => {
-    axios
+    api
       .delete(`${API_URL}/cart/remove/${photoId}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -59,7 +59,7 @@ function Cart() {
   };
 
   const handleCheckout = () => {
-    axios
+    api
       .post(`${API_URL}/cart/checkout`, null, {
         headers: { Authorization: `Bearer ${token}` },
       })
