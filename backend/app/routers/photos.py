@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Form, Q
 from fastapi.responses import FileResponse
 from starlette.staticfiles import StaticFiles
 from sqlalchemy.orm import Session, joinedload, aliased
-from sqlalchemy import or_, func, and_
+from sqlalchemy import or_, func, and_,text
 
 from app.schemas import PhotoOut
 from app.models import UploadSession, Photo
@@ -381,5 +381,14 @@ def set_photo_categories(
 
     db.commit()
     return {"message": "Kategorie zaktualizowane"}
+
+
+@router.get("/me/count")
+def get_my_photo_count(user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
+    result = db.execute(text("SELECT get_total_user_photos(:uid) AS total"), {"uid": user_id})
+    count = result.scalar()
+    return {"total_photos": count}
+
+
 
 router.mount("/media", StaticFiles(directory="media"), name="media")

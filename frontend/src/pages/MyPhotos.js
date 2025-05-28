@@ -1,4 +1,4 @@
-//src/pages/MyPhotos.js
+// src/pages/MyPhotos.js
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
 import PhotoCard from "../components/PhotoCard";
@@ -15,6 +15,7 @@ export default function MyPhotos() {
   const token = localStorage.getItem("access_token");
   const inputRef = useRef(null);
   const [me, setMe] = useState(null);
+  const [photoCount, setPhotoCount] = useState(0);
 
   useEffect(() => {
     if (!token) return;
@@ -33,6 +34,17 @@ export default function MyPhotos() {
       .catch(console.error);
   }, []);
 
+  const refreshPhotoCount = useCallback(() => {
+    if (!token) return;
+    axios
+      .get(`${API_URL}/photos/me/count`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => setPhotoCount(res.data.total_photos))
+      .catch(console.error);
+  }, [token]);
+
+
   const fetchPhotos = useCallback(() => {
     if (!token) return;
     axios
@@ -43,7 +55,15 @@ export default function MyPhotos() {
       .catch(console.error);
   }, [token]);
 
-  useEffect(fetchPhotos, [fetchPhotos]);
+    const updatePhotosAndCount = useCallback(() => {
+    fetchPhotos();
+    refreshPhotoCount();
+  }, [fetchPhotos, refreshPhotoCount]);
+
+  useEffect(() => {
+    fetchPhotos();
+    refreshPhotoCount();
+  }, [fetchPhotos, refreshPhotoCount]);
 
   const handleSelect = (e) => {
     const selected = [...e.target.files];
@@ -130,7 +150,7 @@ export default function MyPhotos() {
       setPhotoData([]);
       setProgress({});
       if (inputRef.current) inputRef.current.value = "";
-      fetchPhotos();
+      updatePhotosAndCount();
       alert("Wysłano!");
     } catch (err) {
       console.error("uploadMany –", err.response?.status, err.response?.data);
@@ -222,9 +242,11 @@ export default function MyPhotos() {
         </form>
       )}
 
+      <p className="text-lg font-medium">Liczba moich zdjęć: {photoCount}</p>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         {photos.map((p) => (
-          <PhotoCard key={p.id} photo={p} onUpdated={fetchPhotos} />
+          <PhotoCard key={p.id} photo={p} onUpdated={updatePhotosAndCount} />
         ))}
       </div>
     </div>
