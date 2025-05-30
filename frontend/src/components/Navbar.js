@@ -102,10 +102,16 @@ export default function Navbar({ isAuthenticated, setIsAuthenticated }) {
                     <Link to="/settings" className="block px-4 py-2 hover:bg-gray-100">
                       Ustawienia
                     </Link>
+                    {isAuthenticated && (
+                    <Link to="/purchased" className="block px-4 py-2 hover:bg-gray-100">
+                      Zakupione
+                      </Link>
+                      )}
                     {user?.role === "admin" && (
                       <Link to="/admin" className="block px-4 py-2 hover:bg-gray-100">
                         Panel admina
                       </Link>
+                    
                     )}
                     <div
                       onClick={handleLogout}
@@ -133,6 +139,7 @@ export default function Navbar({ isAuthenticated, setIsAuthenticated }) {
               >
                 Rejestracja
               </Link>
+
             </>
           )}
         </div>

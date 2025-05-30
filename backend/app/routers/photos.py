@@ -29,7 +29,7 @@ IMAGE_TYPES = {"image/jpeg", "image/png"}
 VIDEO_TYPES = {"video/mp4", "video/quicktime", "video/x-matroska"}
 ALLOWED_TYPES: set[str] = IMAGE_TYPES | VIDEO_TYPES
 API_BASE = "http://127.0.0.1:8000"
-
+router = APIRouter()
 def create_thumbnail(src_path: Path, dst_path: Path) -> None:
     try:
         if src_path.suffix.lower() in {".jpg", ".jpeg", ".png"}:
@@ -237,6 +237,46 @@ def update_photo(
     db.refresh(photo)
     return build_photo_response(photo)
 
+
+@router.get("/purchased", response_model=List[schemas.PhotoOut])
+def get_purchased_photos(user=Depends(get_current_user), db: Session = Depends(get_db)):
+    photos = (
+        db.query(models.Photo)
+        .join(models.Purchase)
+        .filter(models.Purchase.user_id == user)
+        .all()
+    )
+    return [build_photo_response(p) for p in photos]
+
+@router.get("/download/{photo_id}")
+def download_photo(
+    photo_id: int,
+    user_id: int = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    photo = (
+        db.query(models.Photo)
+        .join(models.Purchase)
+        .filter(models.Photo.id == photo_id, models.Purchase.user_id == user_id)
+        .first()
+    )
+
+    if not photo or not photo.file_path:
+        raise HTTPException(status_code=404, detail="Nie znaleziono pliku lub brak dostępu")
+
+    file_path = Path(photo.file_path)
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Plik nie istnieje na dysku")
+
+    media_type, _ = mimetypes.guess_type(str(file_path))
+    return FileResponse(path=file_path, media_type=media_type, filename=file_path.name)
+
+
+
+
+
+
+
 @router.get("/{photo_id}")
 def get_photo(photo_id: int, db: Session = Depends(get_db)):
     photo = db.query(models.Photo).options(joinedload(models.Photo.categories), joinedload(models.Photo.owner)).filter(models.Photo.id == photo_id).first()
@@ -389,6 +429,3 @@ def get_my_photo_count(user_id: int = Depends(get_current_user), db: Session = D
     count = result.scalar()
     return {"total_photos": count}
 
-
-
-router.mount("/media", StaticFiles(directory="media"), name="media")

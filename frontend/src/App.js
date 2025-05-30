@@ -17,7 +17,8 @@ import Gallery from './components/Gallery';
 import Activate from "./pages/Activate";
 import RequestReset from "./pages/RequestReset";
 import ResetPassword from "./pages/ResetPassword";
-
+import PaypalSuccess from "./pages/PaypalSuccess";
+import PurchasedPhotos from "./pages/PurchasedPhotos";
 
 
 function AppContent() {
@@ -51,6 +52,9 @@ function AppContent() {
           <Route path="/activate" element={<Activate />} />
           <Route path="/forgot" element={<RequestReset />} />
           <Route path="/reset" element={<ResetPassword />} />
+          <Route path="/paypal-success" element={<PaypalSuccess />} />
+          <Route path="/purchased" element={<PurchasedPhotos />} />
+
 
           <Route 
             path="/admin" 
