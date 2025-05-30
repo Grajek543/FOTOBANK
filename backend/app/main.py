@@ -43,6 +43,7 @@ app.add_middleware(
 )
 
 
+
 @app.get("/")
 def root():
     return {"message": "Witaj w FotoBank API!"}

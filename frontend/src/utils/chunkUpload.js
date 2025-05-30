@@ -1,9 +1,10 @@
-import axios from "axios";
+//src/utils/chunkUpload.js
+import api from "../api/axios";
 
 export async function uploadFileInChunks(file, meta, token) {
   const CHUNK = 1024 * 1024;
   const totalChunks = Math.ceil(file.size / CHUNK);
-  const { data } = await axios.post("http://localhost:8000/media/init", {}, {
+  const { data } = await api.post("http://localhost:8000/media/init", {}, {
     headers: { Authorization: `Bearer ${token}` }
   });
   const uploadId = data.upload_id;
@@ -23,7 +24,7 @@ export async function uploadFileInChunks(file, meta, token) {
     if (idx === 1) {
       Object.entries(meta).forEach(([k, v]) => form.append(k, v));
     }
-    await axios.post("http://localhost:8000/media/upload-chunk", form, {
+    await api.post("http://localhost:8000/media/upload-chunk", form, {
       headers: { Authorization: `Bearer ${token}` }
     });
   }

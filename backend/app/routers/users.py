@@ -142,7 +142,8 @@ def register_user(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
 
-    send_activation_email(user.email, new_code, purpose="activation")
+    send_activation_email(new_user.email, code, purpose="activation")
+
 
     return new_user
 
