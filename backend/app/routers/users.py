@@ -6,10 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from passlib.context import CryptContext
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 import random
 import smtplib
 from email.mime.text import MIMEText
-
+from pathlib import Path
 
 from app import models, schemas
 from app.database import SessionLocal
@@ -117,8 +118,6 @@ Zespół FotoBank
         print(f"[ERROR] Nie udało się wysłać maila ({purpose}) do {to_email}: {e}")
 
 
-
-
 # ----------------------------- REGISTER + LOGIN -----------------------------
 @router.post("/register", response_model=schemas.UserRead)
 def register_user(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
@@ -143,7 +142,6 @@ def register_user(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
     db.refresh(new_user)
 
     send_activation_email(new_user.email, code, purpose="activation")
-
 
     return new_user
 
@@ -188,7 +186,6 @@ def login(creds: schemas.UserLogin, db: Session = Depends(get_db)):
         "role": user.role,
         "banned": user.banned,
     }
-
 
 
 # ----------------------------- REFRESH -----------------------------
@@ -289,6 +286,8 @@ def toggle_full_ban(user_id: int, status: FullBanStatus, db: Session = Depends(g
     db.commit()
     db.refresh(user)
     return user
+
+
 # ----------------------------- AKTYWACJA -----------------------------
 @router.post("/resend-code")
 def resend_activation_code(data: ResendRequest, db: Session = Depends(get_db)):
@@ -304,8 +303,10 @@ def resend_activation_code(data: ResendRequest, db: Session = Depends(get_db)):
     send_activation_email(user.email, new_code, purpose="activation")
     return {"message": "Kod aktywacyjny został wysłany ponownie."}
 
+
 class ResetPasswordRequest(BaseModel):
     email: str
+
 
 # ----------------------------- PRZYWRACANIE HASŁA -----------------------------
 @router.post("/request-password-reset")
@@ -326,6 +327,7 @@ class PasswordReset(BaseModel):
     code: str
     new_password: str
 
+
 @router.post("/reset-password")
 def reset_password(data: PasswordReset, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.email == data.email).first()
@@ -337,13 +339,36 @@ def reset_password(data: PasswordReset, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Hasło zostało zaktualizowane."}
 
-# ----------------------------- USUWANIE UŻYTKOWNIKA -----------------------------
-@router.delete("/users/delete/{user_id}")
-def delete_user(user_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(check_admin)):
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    db.delete(user)
-    db.commit()
-    return {"detail": "User deleted"}
 
+# ----------------------------- USUWANIE UŻYTKOWNIKA -----------------------------
+def delete_user_files(db: Session, user_id: int):
+    photos = db.query(models.Photo).filter(models.Photo.owner_id == user_id).all()
+    for photo in photos:
+        for file_path in [photo.file_path, photo.thumb_path]:
+            if file_path:
+                p = Path(file_path)
+                if p.exists():
+                    try:
+                        p.unlink()
+                    except Exception as e:
+                        print(f"Błąd usuwania pliku {p}: {e}")
+
+@router.delete("/users/delete/{user_id}", status_code=204)
+def delete_user_full(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user)
+):
+    current_user = db.query(models.User).filter(models.User.id == current_user_id).first()
+    if not current_user:
+        raise HTTPException(status_code=404, detail="Błędny użytkownik")
+
+    if current_user.role != "admin" and current_user.id != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Brak uprawnień")
+
+    delete_user_files(db, user_id)
+
+    db.execute(text("CALL delete_user_and_related(:uid)"), {"uid": user_id})
+    db.commit()
+
+    return {"detail": "Konto i dane użytkownika zostały usunięte"}

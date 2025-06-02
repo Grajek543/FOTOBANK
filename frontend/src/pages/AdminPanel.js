@@ -6,13 +6,7 @@ const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 function AdminPanel() {
   const [users, setUsers] = useState([]);
   const token = localStorage.getItem("access_token");
-  
 
-
-  /* ----------- api z tokenem ----------- */
-  api.get("/users/all")
-
-  /* ----------- pobierz listę ----------- */
   useEffect(() => {
     if (!token) return;
     api
@@ -21,60 +15,52 @@ function AdminPanel() {
       .catch(() => alert("Błąd ładowania użytkowników (czy jesteś adminem?)"));
   }, [token]);
 
-  /* ----------- zmiana roli ----------- */
   const setRole = (id, role) => {
-  const confirmText = `Czy na pewno chcesz ustawić rolę "${role}" dla użytkownika o ID ${id}?`;
-  if (!window.confirm(confirmText)) return;
+    const confirmText = `Czy na pewno chcesz ustawić rolę "${role}" dla użytkownika o ID ${id}?`;
+    if (!window.confirm(confirmText)) return;
 
-  api
-    .put(`/users/set-role/${id}`, { new_role: role })
-    .then((res) => setUsers(users.map((u) => (u.id === id ? res.data : u))))
-    .catch(() => alert("Nie udało się zmienić roli."));
-};
+    api
+      .put(`/users/set-role/${id}`, { new_role: role })
+      .then((res) => setUsers(users.map((u) => (u.id === id ? res.data : u))))
+      .catch(() => alert("Nie udało się zmienić roli."));
+  };
 
-
-  /* ----------- blokada ----------- */
   const toggleBan = (id, banned) => {
-  const confirmText = banned
-    ? `Czy na pewno chcesz ODBLOKOWAĆ użytkownika o ID ${id}?`
-    : `Czy na pewno chcesz ZABLOKOWAĆ użytkownika o ID ${id}?`;
+    const confirmText = banned
+      ? `Czy na pewno chcesz ODBLOKOWAĆ użytkownika o ID ${id}?`
+      : `Czy na pewno chcesz ZABLOKOWAĆ użytkownika o ID ${id}?`;
 
-  if (!window.confirm(confirmText)) return;
+    if (!window.confirm(confirmText)) return;
 
-  api
-    .put(`/users/ban/${id}`, { banned: !banned })
-    .then((res) => setUsers(users.map((u) => (u.id === id ? res.data : u))))
-    .catch(() => alert("Nie udało się zmienić blokady."));
-};
+    api
+      .put(`/users/ban/${id}`, { banned: !banned })
+      .then((res) => setUsers(users.map((u) => (u.id === id ? res.data : u))))
+      .catch(() => alert("Nie udało się zmienić blokady."));
+  };
 
-  /* ----------- full blokada ----------- */
   const toggleFullBan = (id, full_banned) => {
-  const confirmText = full_banned
-    ? `Czy na pewno chcesz ODBLOKOWAĆ całkowicie użytkownika o ID ${id}?`
-    : `Czy na pewno chcesz CAŁKOWICIE ZABLOKOWAĆ użytkownika o ID ${id}?`;
+    const confirmText = full_banned
+      ? `Czy na pewno chcesz ODBLOKOWAĆ całkowicie użytkownika o ID ${id}?`
+      : `Czy na pewno chcesz CAŁKOWICIE ZABLOKOWAĆ użytkownika o ID ${id}?`;
 
-  if (!window.confirm(confirmText)) return;
+    if (!window.confirm(confirmText)) return;
 
-  api
-    .put(`/users/full-ban/${id}`, { full_banned: !full_banned })
-    .then((res) => setUsers(users.map((u) => (u.id === id ? res.data : u))))
-    .catch(() => alert("Nie udało się zmienić pełnej blokady."));
-};
+    api
+      .put(`/users/full-ban/${id}`, { full_banned: !full_banned })
+      .then((res) => setUsers(users.map((u) => (u.id === id ? res.data : u))))
+      .catch(() => alert("Nie udało się zmienić pełnej blokady."));
+  };
 
-/* ----------- usuwanie konta ----------- */
-const deleteUser = (id) => {
-  const confirmText = `Czy na pewno chcesz USUNĄĆ użytkownika o ID ${id}? Tej operacji nie można cofnąć!`;
-  if (!window.confirm(confirmText)) return;
+  const deleteUser = (id) => {
+    const confirmText = `Czy na pewno chcesz USUNĄĆ użytkownika o ID ${id}? Tej operacji nie można cofnąć!`;
+    if (!window.confirm(confirmText)) return;
 
-  api
-    .delete(`/users/delete/${id}`)
-    .then(() => setUsers(users.filter((u) => u.id !== id)))
-    .catch(() => alert("Nie udało się usunąć użytkownika."));
-};
+    api
+      .delete(`/users/delete/${id}`)
+      .then(() => setUsers(users.filter((u) => u.id !== id)))
+      .catch(() => alert("Nie udało się usunąć użytkownika."));
+  };
 
-
-
-  /* ----------- UI ----------- */
   return (
     <div className="p-6">
       <h2 className="text-2xl font-bold mb-6">Panel administratora</h2>
@@ -100,7 +86,6 @@ const deleteUser = (id) => {
               <td className="p-2 border">{u.username || "brak"}</td>
               <td className="p-2 border">{u.role}</td>
 
-              {/* blokada */}
               <td className="p-2 border">
                 <input
                   type="checkbox"
@@ -109,17 +94,14 @@ const deleteUser = (id) => {
                 />
               </td>
 
-              {/* full blokada */}
               <td className="p-2 border">
-               <input
-                 type="checkbox"
-                 checked={u.full_banned}
-                 onChange={() => toggleFullBan(u.id, u.full_banned)}
+                <input
+                  type="checkbox"
+                  checked={u.full_banned}
+                  onChange={() => toggleFullBan(u.id, u.full_banned)}
                 />
               </td>
 
-
-              {/* dwa szybkie przyciski roli */}
               <td className="p-2 border space-x-2">
                 <button
                   onClick={() => setRole(u.id, "admin")}
@@ -142,15 +124,15 @@ const deleteUser = (id) => {
                   user
                 </button>
               </td>
+
               <td className="p-2 border">
-              <button
-                onClick={() => deleteUser(u.id)}
+                <button
+                  onClick={() => deleteUser(u.id)}
                   className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
                 >
-                Usuń
-              </button>
+                  Usuń
+                </button>
               </td>
-
             </tr>
           ))}
         </tbody>

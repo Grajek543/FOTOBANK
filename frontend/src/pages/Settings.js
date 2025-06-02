@@ -1,4 +1,4 @@
-//src/pages/Settings.js
+// src/pages/Settings.js
 import React, { useState, useEffect } from "react";
 import api from "../api/axios";
 import { useNavigate } from "react-router-dom";
@@ -21,6 +21,8 @@ function Settings() {
     .then((res) => {
       setCurrentUsername(res.data.username || "");
       setUsername(res.data.username || "");
+      // Zapisz userId lokalnie do użycia w handleDelete
+      localStorage.setItem("user_id", res.data.id);
     })
     .catch((err) => {
       console.error("Błąd ładowania danych użytkownika:", err);
@@ -79,28 +81,30 @@ function Settings() {
 
   const handleDelete = () => {
     const token = localStorage.getItem("access_token");
-    if (!token) return;
+    const userId = localStorage.getItem("user_id");
+    if (!token || !userId) {
+      alert("Brak danych użytkownika. Zaloguj się ponownie.");
+      return;
+    }
 
-    const confirmed = window.confirm("Czy na pewno chcesz usunąć konto? Tej operacji nie można cofnąć.");
-    if (!confirmed) return;
+    if (!window.confirm("Czy na pewno chcesz usunąć konto? Tej operacji nie można cofnąć.")) return;
 
-    api.delete(`${API_URL}/users/delete`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    .then(() => {
-      alert("Konto zostało usunięte.");
-      localStorage.clear();
-      navigate("/");
-    })
-    .catch((err) => {
-      console.error(err);
-      alert("Błąd podczas usuwania konta.");
-    });
+    api
+      .delete(`${API_URL}/users/delete/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      .then(() => {
+        alert("Konto zostało usunięte.");
+        localStorage.clear();
+        navigate("/");
+      })
+      .catch(() => alert("Błąd podczas usuwania konta."));
   };
+
 
   return (
     <div className="min-h-screen p-8">
-      <h2 className="text-2xl font-bold mb-6">Ustawienia konta</h2>
+      <h2 className="text-2xl font-bold mb-6 text-center">Ustawienia konta</h2>
 
       <form onSubmit={handleUpdate} className="mb-6 max-w-md space-y-4">
         <div>
