@@ -15,6 +15,7 @@ from fastapi import (
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 from app.database import get_db
 from app import models, schemas
@@ -43,6 +44,21 @@ for d in (MEDIA_DIR, THUMB_DIR):
     d.mkdir(parents=True, exist_ok=True)
 
 router = APIRouter(prefix="/photos", tags=["photos"])
+
+def add_photo_via_proc(db: Session, title, description, category, price, file_path, thumb_path, owner_id):
+    sql = text("""
+        CALL add_photo(:title, :description, :category, :price, :file_path, :thumb_path, :owner_id)
+    """)
+    db.execute(sql, {
+        "title": title,
+        "description": description,
+        "category": category,
+        "price": price,
+        "file_path": file_path,
+        "thumb_path": thumb_path,
+        "owner_id": owner_id,
+    })
+    db.commit()
 
 # ───────────────────────────── upload ──────────────────────────────
 @router.post("/upload", response_model=schemas.PhotoOut)
@@ -76,33 +92,33 @@ async def upload_photo(
         thumb_path = THUMB_DIR / f"{uid}.jpg"
         create_video_thumb(file_path, thumb_path)
 
-    # → 4. Zapis w bazie
-    new_photo = models.Photo(
-        title       = title,
-        description = description,
-        category    = category,
-        price       = price,
-        file_path   = str(file_path),
-        thumb_path  = str(thumb_path) if thumb_path else None,
-        owner_id    = 1,                 # current_user.id  ← jeśli masz auth
+    # → 4. Zapis w bazie przez procedurę
+    owner_id = 1  # lub current_user.id jeśli masz auth
+    add_photo_via_proc(
+        db,
+        title,
+        description,
+        category,
+        price,
+        str(file_path),
+        str(thumb_path) if thumb_path else None,
+        owner_id
     )
 
-    db.add(new_photo)
-    db.commit()
-    db.refresh(new_photo)
-    return new_photo
+    # Możesz zwrócić dane, ale nie masz obiektu Photo,
+    # więc zwróć np. prosty komunikat lub dopisz select by pobrać dane po insert
+    return {"message": "Zdjęcie dodane za pomocą procedury."}
 
 # ───────────────────── statyczne miniatury / zdjęcia ─────────────────────
 router.mount("/media", StaticFiles(directory="media"), name="media")
 
-# ──────────────────────────── streaming wideo ────────────────────────────
+# ─────────────────────────── streaming wideo ────────────────────────────
 @router.get("/stream/{photo_id}")
 def stream_video(
     photo_id: int,
     range_header: str | None = Header(default=None, convert_underscores=False, alias="Range"),
     db: Session = Depends(get_db),
 ):
-    """Obsługa HTTP Range + streaming MP4/MOV."""
     photo = db.get(models.Photo, photo_id)
     if not photo:
         raise HTTPException(404)
@@ -117,7 +133,7 @@ def stream_video(
     file_size = path.stat().st_size
     start, end = 0, file_size - 1
 
-    if range_header:                       # „Range: bytes=…”
+    if range_header:
         try:
             units, pos = range_header.split("=")
             if units != "bytes":
@@ -149,52 +165,6 @@ def stream_video(
     return StreamingResponse(
         iter_file(),
         status_code = 206 if range_header else 200,
-        media_type  = mime,
-        headers     = headers,
-    )
-
-# ──────────────────────────── streaming wideo ────────────────────────────
-@router.get("/stream/{photo_id}")
-def stream_video(
-    photo_id: int,
-    range: str | None = None,
-    db: Session = Depends(get_db),
-):
-    photo = db.get(models.Photo, photo_id)
-    if not photo:
-        raise HTTPException(404)
-
-    path = Path(photo.file_path)
-    if not path.exists():
-        raise HTTPException(404)
-
-    mime, _ = mimetypes.guess_type(str(path))
-    mime = mime or "video/mp4"
-
-    file_size = path.stat().st_size
-    start, end = 0, file_size - 1
-
-    if range:                          # "bytes=123-"
-        units, pos = range.split("=")
-        if units != "bytes":
-            raise HTTPException(416)
-        start_str, end_str = pos.split("-")
-        start = int(start_str)
-        if end_str:
-            end = int(end_str)
-
-    chunk_size = (end - start) + 1
-    headers = {
-        "Content-Range": f"bytes {start}-{end}/{file_size}",
-        "Accept-Ranges": "bytes",
-    }
-
-    file_like = open(path, "rb")
-    file_like.seek(start)
-
-    return StreamingResponse(
-        file_like,
-        status_code = 206 if range else 200,
         media_type  = mime,
         headers     = headers,
     )

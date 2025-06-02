@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Form, Q
 from fastapi.responses import FileResponse
 from starlette.staticfiles import StaticFiles
 from sqlalchemy.orm import Session, joinedload, aliased
-from sqlalchemy import or_, func, and_,text
+from sqlalchemy import or_, func, and_, text
 
 from app.schemas import PhotoOut
 from app.models import UploadSession, Photo
@@ -30,6 +30,7 @@ VIDEO_TYPES = {"video/mp4", "video/quicktime", "video/x-matroska"}
 ALLOWED_TYPES: set[str] = IMAGE_TYPES | VIDEO_TYPES
 API_BASE = "http://127.0.0.1:8000"
 router = APIRouter()
+
 def create_thumbnail(src_path: Path, dst_path: Path) -> None:
     try:
         if src_path.suffix.lower() in {".jpg", ".jpeg", ".png"}:
@@ -76,6 +77,21 @@ def build_photo_response(photo: models.Photo) -> schemas.PhotoOut:
         purchases_number=len(photo.purchases)
     )
 
+def add_photo_via_proc(db: Session, title, description, category, price, file_path, thumb_path, owner_id) -> int:
+    raw_conn = db.connection().connection
+    cursor = raw_conn.cursor()
+    cursor.callproc('add_photo', [title, description, category, price, file_path, thumb_path, owner_id])
+    while cursor.nextset():
+        pass
+    cursor.execute("SELECT LAST_INSERT_ID()")
+    last_id = cursor.fetchone()[0]
+    cursor.close()
+    return last_id
+
+
+
+
+
 
 router = APIRouter(prefix="/photos", tags=["photos"])
 
@@ -109,25 +125,29 @@ async def upload_photos(
         thumb_full_path = THUMBS_DIR / f"{file_full_path.stem}.jpg"
         create_thumbnail(file_full_path, thumb_full_path)
 
-        photo = models.Photo(
-            title=titles[i],
-            description=descriptions[i],
-            price=price,
-            file_path=str(file_full_path),
-            thumb_path=str(thumb_full_path) if thumb_full_path.exists() else None,
-            owner_id=user_id,
+        photo_id = add_photo_via_proc(
+            db,
+            title,
+            description,
+            category,
+            price,
+            str(file_path),
+            str(thumb_path) if thumb_path else None,
+            user_id
         )
-        db.add(photo)
-        db.flush()
+
 
         category_ids = form_data.getlist("category_ids")
         for cat_id in category_ids:
-            db.add(models.PhotoCategory(photo_id=photo.id, category_id=int(cat_id)))
+            db.add(models.PhotoCategory(photo_id=photo_id, category_id=int(cat_id)))
 
+        db.commit()
+
+        photo = db.query(models.Photo).filter(models.Photo.id == photo_id).first()
         output.append(build_photo_response(photo))
 
-    db.commit()
     return output
+
 
 
 @router.get("/", response_model=List[schemas.PhotoOut])
@@ -272,11 +292,6 @@ def download_photo(
     return FileResponse(path=file_path, media_type=media_type, filename=file_path.name)
 
 
-
-
-
-
-
 @router.get("/{photo_id}")
 def get_photo(photo_id: int, db: Session = Depends(get_db)):
     photo = db.query(models.Photo).options(joinedload(models.Photo.categories), joinedload(models.Photo.owner)).filter(models.Photo.id == photo_id).first()
@@ -335,19 +350,17 @@ async def upload_chunk(
 
     return {"message": f"Received chunk {chunk_index}"}
 
-@router.post("/finish-upload", response_model=PhotoOut)
+@router.post("/finish-upload", response_model=schemas.PhotoOut)
 def finish_upload(
     upload_id: str = Form(...),
     title: str = Form(...),
     description: str = Form(...),
-    category: str = Form(...), 
+    category: str = Form(...),
     price: float = Form(...),
     category_ids: List[int] = Form(default=[]),
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user)
 ):
-
-
     session = db.query(UploadSession).filter(and_(UploadSession.upload_id == upload_id, UploadSession.user_id == user_id)).first()
     if not session or session.is_finished:
         raise HTTPException(status_code=404, detail="Upload session invalid or already completed")
@@ -369,22 +382,20 @@ def finish_upload(
     thumb_path = THUMBS_DIR / f"{file_path.stem}.jpg"
     create_thumbnail(file_path, thumb_path)
 
-    photo = Photo(
-        title=title,
-        description=description,
-        category=category,
-        price=price,
-        file_path=str(file_path),
-        thumb_path=str(thumb_path),
-        owner_id=user_id
-    )
+    photo_id = add_photo_via_proc(
+            db,
+            title,
+            description,
+            category,
+            price,
+            str(file_path),
+            str(thumb_path) if thumb_path else None,
+            user_id
+        )
 
-    db.add(photo)
-    db.flush()
 
     for cat_id in category_ids:
-        db.add(models.PhotoCategory(photo_id=photo.id, category_id=cat_id))
-
+        db.add(models.PhotoCategory(photo_id=photo_id, category_id=cat_id))
 
     db.delete(session)
     db.commit()
@@ -392,16 +403,10 @@ def finish_upload(
     if upload_id in upload_buffers:
         del upload_buffers[upload_id]
 
+    photo = db.query(models.Photo).filter(models.Photo.id == photo_id).first()
 
-    return {
-        "id": photo.id,
-        "title": photo.title,
-        "description": photo.description,
-        "category": photo.category,
-        "price": photo.price,
-        "owner_id": photo.owner_id,
-        "owner_username": photo.owner.username if photo.owner else "Brak"
-    }
+    return build_photo_response(photo)
+
 
 
 @router.post("/{photo_id}/set-categories")
@@ -428,4 +433,3 @@ def get_my_photo_count(user_id: int = Depends(get_current_user), db: Session = D
     result = db.execute(text("SELECT get_total_user_photos(:uid) AS total"), {"uid": user_id})
     count = result.scalar()
     return {"total_photos": count}
-
