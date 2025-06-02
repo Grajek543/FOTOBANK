@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from app.database import get_db
 from app.dependencies import get_current_user
 from app import models
@@ -65,3 +66,11 @@ def checkout(user_id: int = Depends(get_current_user), db: Session = Depends(get
     db.commit()
 
     return {"message": f"Zamówienie złożone. Kwota: {total:.2f} zł"}
+
+@router.get("/sum")
+def get_cart_sum(user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
+    print(f"DEBUG: user_id = {user_id}")
+    result = db.execute(text("SELECT cart_sum(:uid)"), {"uid": user_id})
+    total = result.scalar()
+    print(f"DEBUG: total from cart_sum = {total}")
+    return {"total": total or 0}

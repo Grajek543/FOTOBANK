@@ -1,4 +1,4 @@
-//src/pages/Cart.js
+// src/pages/Cart.js
 import React, { useEffect, useState } from "react";
 import api from "../api/axios";
 import { Link } from "react-router-dom";
@@ -12,12 +12,20 @@ function Cart() {
 
   useEffect(() => {
     if (!token) return;
+
     api
       .get(`${API_URL}/cart/`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => setPhotoIds(res.data))
       .catch((err) => console.error("Błąd ładowania koszyka:", err));
+
+    api
+      .get(`${API_URL}/cart/sum`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => setTotal(res.data.total))
+      .catch((err) => console.error("Błąd ładowania sumy koszyka:", err));
   }, []);
 
   useEffect(() => {
@@ -31,9 +39,6 @@ function Cart() {
         const responses = await Promise.all(promises);
         const loadedPhotos = responses.map((res) => res.data);
         setPhotos(loadedPhotos);
-
-        const totalPrice = loadedPhotos.reduce((sum, p) => sum + p.price, 0);
-        setTotal(totalPrice);
       } catch (err) {
         console.error("Błąd ładowania zdjęć:", err);
       }
@@ -54,42 +59,55 @@ function Cart() {
       })
       .then(() => {
         setPhotoIds((prev) => prev.filter((id) => id !== photoId));
+        api
+          .get(`${API_URL}/cart/sum`, {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          .then((res) => setTotal(res.data.total))
+          .catch((err) => console.error("Błąd ładowania sumy koszyka:", err));
       })
       .catch((err) => console.error("Błąd usuwania z koszyka:", err));
   };
 
   const handleCheckout = () => {
-  api
-    .post(`${API_URL}/cart/checkout`, null, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    .then((res) => {
-      alert(res.data.message);
-      setPhotoIds([]);
-    })
-    .catch((err) => {
-      console.error("Błąd realizacji zamówienia:", err);
-      alert("Nie udało się zrealizować zamówienia.");
-    });
-};
-const handlePayPal = async () => {
-  try {
-    const res = await api.post(`${API_URL}/payments/create`, {}, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    api
+      .post(`${API_URL}/cart/checkout`, null, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => {
+        alert(res.data.message);
+        setPhotoIds([]);
+        setPhotos([]);
+        setTotal(0);
+      })
+      .catch((err) => {
+        console.error("Błąd realizacji zamówienia:", err);
+        alert("Nie udało się zrealizować zamówienia.");
+      });
+  };
 
-    const approvalUrl = res.data.links.find(link => link.rel === "approve")?.href;
-    if (approvalUrl) {
-      window.location.href = approvalUrl;
-    } else {
-      alert("Nie udało się uzyskać linku PayPal.");
+  const handlePayPal = async () => {
+    try {
+      const res = await api.post(
+        `${API_URL}/payments/create`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      const approvalUrl = res.data.links.find((link) => link.rel === "approve")
+        ?.href;
+      if (approvalUrl) {
+        window.location.href = approvalUrl;
+      } else {
+        alert("Nie udało się uzyskać linku PayPal.");
+      }
+    } catch (err) {
+      console.error("Błąd PayPal:", err);
+      alert("Nie udało się uruchomić płatności.");
     }
-  } catch (err) {
-    console.error("Błąd PayPal:", err);
-    alert("Nie udało się uruchomić płatności.");
-  }
-};
-
+  };
 
   const normalize = (path) => {
     if (!path) return "";
@@ -108,7 +126,10 @@ const handlePayPal = async () => {
             {photos.map((photo) => {
               const isVideo = /\.(mp4|mov|mkv)$/i.test(photo.file_url);
               return (
-                <div key={photo.id} className="bg-white shadow rounded overflow-hidden">
+                <div
+                  key={photo.id}
+                  className="bg-white shadow rounded overflow-hidden"
+                >
                   <Link to={`/photo/${photo.id}`}>
                     {isVideo ? (
                       <video controls className="w-full h-48 object-cover">
@@ -140,24 +161,21 @@ const handlePayPal = async () => {
           </div>
 
           <div className="mt-8 text-center space-y-4">
-  <p className="text-xl font-semibold">Łączna kwota: {total.toFixed(2)} zł</p>
+            <p className="text-xl font-semibold">Łączna kwota: {total.toFixed(2)} zł</p>
 
-  <button
-    onClick={handleCheckout}
-    className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition w-full"
-  >
-    Zapłać gotówką (symulacja)
-  </button>
+            <button
+              onClick={handleCheckout}
+              className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition w-full"
+            >
+              Zapłać gotówką (symulacja)
+            </button>
 
-  <button
-    onClick={handlePayPal}
-    className="bg-yellow-500 text-white px-6 py-2 rounded hover:bg-yellow-600 transition w-full"
-  >
-    Zapłać przez PayPal
-  </button>
-
-
-
+            <button
+              onClick={handlePayPal}
+              className="bg-yellow-500 text-white px-6 py-2 rounded hover:bg-yellow-600 transition w-full"
+            >
+              Zapłać przez PayPal
+            </button>
           </div>
         </>
       )}
