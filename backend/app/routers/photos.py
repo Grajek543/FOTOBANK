@@ -358,10 +358,13 @@ def finish_upload(
     category: str = Form(...),
     price: float = Form(...),
     category_ids: List[int] = Form(default=[]),
+    original_filename: str = Form(...),  # dodane pole do przesłania oryginalnej nazwy pliku
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user)
 ):
-    session = db.query(UploadSession).filter(and_(UploadSession.upload_id == upload_id, UploadSession.user_id == user_id)).first()
+    session = db.query(UploadSession).filter(
+        (UploadSession.upload_id == upload_id) & (UploadSession.user_id == user_id)
+    ).first()
     if not session or session.is_finished:
         raise HTTPException(status_code=404, detail="Upload session invalid or already completed")
 
@@ -372,10 +375,14 @@ def finish_upload(
     ordered = [chunks_dict[i] for i in sorted(chunks_dict.keys())]
     final_data = b''.join(ordered)
 
-    ext = Path(title).suffix.lower() or ".bin"
-    file_name = f"{uuid4().hex}{ext}"
+    ext = Path(original_filename).suffix.lower()
+    ALLOWED = {".jpg", ".jpeg", ".png", ".mp4", ".mov"}
+    if ext not in ALLOWED:
+        ext = ".bin"
 
+    file_name = f"{uuid4().hex}{ext}"
     file_path = MEDIA_DIR / file_name
+
     with file_path.open("wb") as f:
         f.write(final_data)
 
@@ -383,16 +390,15 @@ def finish_upload(
     create_thumbnail(file_path, thumb_path)
 
     photo_id = add_photo_via_proc(
-            db,
-            title,
-            description,
-            category,
-            price,
-            str(file_path),
-            str(thumb_path) if thumb_path else None,
-            user_id
-        )
-
+        db,
+        title,
+        description,
+        category,
+        price,
+        str(file_path),
+        str(thumb_path) if thumb_path.exists() else None,
+        user_id
+    )
 
     for cat_id in category_ids:
         db.add(models.PhotoCategory(photo_id=photo_id, category_id=cat_id))
@@ -404,8 +410,8 @@ def finish_upload(
         del upload_buffers[upload_id]
 
     photo = db.query(models.Photo).filter(models.Photo.id == photo_id).first()
-
     return build_photo_response(photo)
+
 
 
 

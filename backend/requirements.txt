@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+sqlalchemy
+pymysql
+python-multipart
+python-jose
+passlib[bcrypt]
+python-dotenv
+pillow
+email-validator
+paypal-checkout-serversdk
