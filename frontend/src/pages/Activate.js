@@ -6,10 +6,12 @@ const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 function Activate() {
   const [email, setEmail] = useState(localStorage.getItem("pending_email") || "");
   const [code, setCode] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleActivate = (e) => {
     e.preventDefault();
+    setLoading(true);
 
     api.post(`${API_URL}/users/activate`, { email, code })
       .then(() => {
@@ -20,7 +22,8 @@ function Activate() {
       .catch((err) => {
         console.error("Błąd aktywacji:", err);
         alert(err.response?.data?.detail || "Błąd podczas aktywacji konta.");
-      });
+      })
+      .finally(() => setLoading(false));
   };
 
   const resendCode = () => {
@@ -75,9 +78,10 @@ function Activate() {
           </div>
           <button
             type="submit"
-            className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
+            disabled={loading}
+            className={`w-full py-2 rounded text-white ${loading ? "bg-gray-400" : "bg-green-600 hover:bg-green-700"}`}
           >
-            Aktywuj konto
+            {loading ? "Aktywowanie..." : "Aktywuj konto"}
           </button>
         </form>
         <button

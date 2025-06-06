@@ -1,4 +1,3 @@
-// src/pages/Register.js
 import React, { useState } from "react";
 import api from "../api/axios";
 import { useNavigate } from "react-router-dom";
@@ -8,11 +7,14 @@ function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
 
   const handleRegister = (e) => {
     e.preventDefault();
+    setLoading(true);
+
     api
       .post(`${API_URL}/users/register`, {
         email,
@@ -20,20 +22,18 @@ function Register() {
         username,
       })
       .then((res) => {
-        console.log("Odpowiedź z backendu:", res.data);
         alert("Konto założone! Sprawdź e-mail i aktywuj konto.");
         localStorage.setItem("pending_email", email);
         navigate("/activate");
       })
       .catch((err) => {
         if (err.response) {
-          console.error("Błąd rejestracji:", err.response.data);
           alert("Błąd rejestracji: " + err.response.data.detail);
         } else {
-          console.error("Nieznany błąd:", err);
           alert("Nieznany błąd rejestracji");
         }
-      });
+      })
+      .finally(() => setLoading(false));
   };
 
   return (
@@ -51,7 +51,6 @@ function Register() {
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
             />
           </div>
-
           <div>
             <label className="block text-gray-700">Hasło</label>
             <input
@@ -62,7 +61,6 @@ function Register() {
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
             />
           </div>
-
           <div>
             <label className="block text-gray-700">Nazwa użytkownika</label>
             <input
@@ -73,12 +71,12 @@ function Register() {
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
             />
           </div>
-
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded-md"
+            disabled={loading}
+            className={`w-full py-2 rounded-md text-white ${loading ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'}`}
           >
-            Zarejestruj się
+            {loading ? "Rejestrowanie..." : "Zarejestruj się"}
           </button>
         </form>
       </div>

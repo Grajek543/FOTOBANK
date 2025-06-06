@@ -1,5 +1,3 @@
-// src/pages/Login.js
-
 import React, { useState } from "react";
 import api from "../api/axios";
 import { useNavigate } from "react-router-dom";
@@ -8,45 +6,39 @@ const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = (e) => {
     e.preventDefault();
+    setLoading(true);
 
     api.post(`${API_URL}/users/login`, { email, password })
       .then((res) => {
         alert("Zalogowano!");
-
         localStorage.setItem("access_token", res.data.access_token);
         localStorage.setItem("user_id", res.data.user_id);
         localStorage.setItem("role", res.data.role); 
-
         navigate("/");
       })
       .catch((err) => {
         console.error(err);
-
         const detail = err.response?.data?.detail;
 
         if (err.response?.status === 403) {
           alert(detail);
-
-        if (detail?.includes("nie zostało aktywowane")) {
-          if (window.confirm("Chcesz przejść do strony aktywacji konta?")) {
-            navigate("/activate");
+          if (detail?.includes("nie zostało aktywowane")) {
+            if (window.confirm("Chcesz przejść do strony aktywacji konta?")) {
+              navigate("/activate");
+            }
           }
+        } else if (err.response?.status === 401) {
+          alert("Nieprawidłowy login lub hasło.");
+        } else {
+          alert("Błąd logowania");
         }
-      } else if (err.response?.status === 401) {
-        alert("Nieprawidłowy login lub hasło.");
-      } else {
-        alert("Błąd logowania");
-      }
-    });
-
-
-
-
-
+      })
+      .finally(() => setLoading(false));
   };
 
   return (
@@ -76,9 +68,10 @@ function Login() {
           </div>
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded-md"
+            disabled={loading}
+            className={`w-full py-2 rounded-md text-white ${loading ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'}`}
           >
-            Zaloguj się
+            {loading ? "Logowanie..." : "Zaloguj się"}
           </button>
         </form>
         <p className="text-sm text-center mt-4">
@@ -86,7 +79,6 @@ function Login() {
             Nie pamiętasz hasła?
           </a>
         </p>
-
       </div>
     </div>
   );
