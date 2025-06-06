@@ -91,15 +91,6 @@ def capture_order(order_id: str, user_id: int = Depends(get_current_user), db: S
         ))
         total += item.photo.price
 
-    # Dodaj payment record
-    db.add(models.Purchase(
-    user_id=user_id,                    
-    photo_id=item.photo_id,
-    purchase_date=datetime.utcnow(),
-    payment_status="completed",
-    total_cost=item.photo.price,
-    created_at=datetime.utcnow()
-))
 
     # Wyczyść koszyk
     db.query(models.CartItem).filter_by(cart_id=cart.id).delete()

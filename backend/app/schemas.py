@@ -199,3 +199,20 @@ class PurchaseRead(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# Logi
+class PurchaseLogRead(BaseModel):
+    id: int
+    user_id: int
+    email: str
+    photo_id: int
+    purchase_date: Optional[datetime]
+    payment_status: Optional[str]
+    total_cost: Optional[float]
+    created_at: Optional[datetime]
+    updated_at: Optional[datetime]
+    logged_at: Optional[datetime]
+
+    class Config:
+        from_attributes = True

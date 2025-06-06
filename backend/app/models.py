@@ -155,3 +155,19 @@ class Payment(Base):
     transaction_id = Column(String(255))
 
     order = relationship("Order", back_populates="payment")
+
+
+# --------------------------- PurchaseLog -----------------------
+class PurchaseLog(Base):
+    __tablename__ = "purchase_logs"
+
+    id             = Column(Integer, primary_key=True, index=True)
+    user_id        = Column(Integer)
+    email          = Column(String(255))
+    photo_id       = Column(Integer)
+    purchase_date  = Column(DateTime)
+    payment_status = Column(String(50))
+    total_cost     = Column(Float)
+    created_at     = Column(DateTime)
+    updated_at     = Column(DateTime)
+    logged_at      = Column(DateTime)

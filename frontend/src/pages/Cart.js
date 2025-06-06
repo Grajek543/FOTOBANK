@@ -9,6 +9,8 @@ function Cart() {
   const [photos, setPhotos] = useState([]);
   const [total, setTotal] = useState(0);
   const token = localStorage.getItem("access_token");
+  const [loadingPayPal, setLoadingPayPal] = useState(false);
+
 
   useEffect(() => {
     if (!token) return;
@@ -86,28 +88,29 @@ function Cart() {
       });
   };
 
-  const handlePayPal = async () => {
-    try {
-      const res = await api.post(
-        `${API_URL}/payments/create`,
-        {},
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+const handlePayPal = async () => {
+  setLoadingPayPal(true);
+  try {
+    const res = await api.post(
+      `${API_URL}/payments/create`,
+      {},
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
 
-      const approvalUrl = res.data.links.find((link) => link.rel === "approve")
-        ?.href;
-      if (approvalUrl) {
-        window.location.href = approvalUrl;
-      } else {
-        alert("Nie udało się uzyskać linku PayPal.");
-      }
-    } catch (err) {
-      console.error("Błąd PayPal:", err);
-      alert("Nie udało się uruchomić płatności.");
+    const approvalUrl = res.data.links.find((link) => link.rel === "approve")?.href;
+    if (approvalUrl) {
+      window.location.href = approvalUrl;
+    } else {
+      alert("Nie udało się uzyskać linku PayPal.");
+      setLoadingPayPal(false);
     }
-  };
+  } catch (err) {
+    console.error("Błąd PayPal:", err);
+    alert("Nie udało się uruchomić płatności.");
+    setLoadingPayPal(false);
+  }
+};
+
 
   const normalize = (path) => {
     if (!path) return "";
@@ -162,20 +165,14 @@ function Cart() {
 
           <div className="mt-8 text-center space-y-4">
             <p className="text-xl font-semibold">Łączna kwota: {total.toFixed(2)} zł</p>
-
-            <button
-              onClick={handleCheckout}
-              className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition w-full"
-            >
-              Zapłać gotówką (symulacja)
-            </button>
-
             <button
               onClick={handlePayPal}
-              className="bg-yellow-500 text-white px-6 py-2 rounded hover:bg-yellow-600 transition w-full"
+              className="bg-yellow-500 text-white px-6 py-2 rounded hover:bg-yellow-600 transition w-full flex items-center justify-center"
+              disabled={loadingPayPal}
             >
-              Zapłać przez PayPal
+              {loadingPayPal ? "Ładowanie PayPal..." : "Zapłać przez PayPal"}
             </button>
+
           </div>
         </>
       )}
