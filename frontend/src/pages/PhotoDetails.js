@@ -1,4 +1,3 @@
-//src/pages/PhotoDetails.js
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import api from "../api/axios";
@@ -8,6 +7,10 @@ function PhotoDetails() {
   const { photoId } = useParams();
   const [photo, setPhoto] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // STANY na komunikat zamiast alertów
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("info"); // "info" | "error" | "success"
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
@@ -21,36 +24,44 @@ function PhotoDetails() {
   }, [photoId]);
 
   const handleAddToCart = () => {
-  const token = localStorage.getItem("access_token");
-  if (!token) return;
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
 
-  api
-    .post(`${API_URL}/cart/add/${photoId}`, null, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    .then(() => {
-      alert("Zdjęcie dodane do koszyka!");
-    })
-    .catch((err) => {
-      const detail = err.response?.data?.detail;
-      if (detail === "To zdjęcie jest już w koszyku.") {
-        alert("To zdjęcie już znajduje się w koszyku.");
-      } else if (detail === "Nie możesz dodać własnego zdjęcia do koszyka.") {
-        alert("Nie możesz kupować własnych zdjęć.");
-      } else {
-        console.error("Błąd dodawania do koszyka:", err);
-        alert("Wystąpił błąd podczas dodawania do koszyka.");
-      }
-    });
-};
-
+    setMessage("");
+    api
+      .post(
+        `${API_URL}/cart/add/${photoId}`,
+        null,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      .then(() => {
+        setMessageType("success");
+        setMessage("Zdjęcie dodane do koszyka!");
+      })
+      .catch((err) => {
+        const detail = err.response?.data?.detail;
+        setMessageType("error");
+        if (detail === "To zdjęcie jest już w koszyku.") {
+          setMessage("To zdjęcie już znajduje się w koszyku.");
+        } else if (
+          detail === "Nie możesz dodać własnego zdjęcia do koszyka."
+        ) {
+          setMessage("Nie możesz kupować własnych zdjęć.");
+        } else {
+          console.error("Błąd dodawania do koszyka:", err);
+          setMessage("Wystąpił błąd podczas dodawania do koszyka.");
+        }
+      });
+  };
 
   const isVideo = /\.(mp4|mov|mkv)$/i.test(photo?.file_url || "");
 
   const normalize = (path) => {
     if (!path) return "";
     if (/^https?:\/\//i.test(path)) return path.replace(/\\/g, "/");
-    return `${API_URL}${path.startsWith("/") ? "" : "/"}${path.replace(/\\/g, "/")}`;
+    return `${API_URL}${
+      path.startsWith("/") ? "" : "/"
+    }${path.replace(/\\/g, "/")}`;
   };
 
   if (!photo) {
@@ -79,18 +90,16 @@ function PhotoDetails() {
         <h2 className="text-3xl font-bold">{photo.title}</h2>
         <p className="text-lg text-gray-700">{photo.description}</p>
         {photo.categories?.length > 0 && (
-         <p className="text-md text-gray-500">
-         Kategorie: {photo.categories.join(", ")}
-        </p>
+          <p className="text-md text-gray-500">
+            Kategorie: {photo.categories.join(", ")}
+          </p>
         )}
         {photo.owner_username && (
-        <p className="text-md text-gray-500">
-         Autor: {photo.owner_username}
-         </p>
+          <p className="text-md text-gray-500">
+            Autor: {photo.owner_username}
+          </p>
         )}
-
         <p className="text-md text-gray-500">Cena: {photo.price} zł</p>
-        
 
         {isLoggedIn && (
           <button
@@ -99,6 +108,19 @@ function PhotoDetails() {
           >
             Dodaj do koszyka
           </button>
+        )}
+
+        {/* WYŚWIETLANIE KOMUNIKATU INLINE */}
+        {message && (
+          <p
+            className={
+              messageType === "error"
+                ? "mt-2 text-red-600 text-sm"
+                : "mt-2 text-green-600 text-sm"
+            }
+          >
+            {message}
+          </p>
         )}
       </div>
     </div>

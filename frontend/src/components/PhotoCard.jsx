@@ -15,6 +15,10 @@ export default function PhotoCard({ photo, onUpdated }) {
   const [selectedCategories, setSelectedCategories] = useState([]);
   const token = localStorage.getItem("access_token");
 
+  // --- NOWE STANY do inline-confirm i komunikatu o błędzie ---
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
   useEffect(() => {
     api
       .get(`${API_URL}/photos/categories`)
@@ -65,8 +69,14 @@ export default function PhotoCard({ photo, onUpdated }) {
     }
   };
 
-  const deletePhoto = async () => {
-    if (!window.confirm("Na pewno chcesz usunąć ten plik?")) return;
+  // Gdy użytkownik kliknie "Usuń", tylko włączamy inline-confirm
+  const onClickDelete = () => {
+    setErrorMessage("");
+    setConfirmingDelete(true);
+  };
+
+  // Rzeczywiste usunięcie po potwierdzeniu
+  const confirmDelete = async () => {
     try {
       await api.delete(`${API_URL}/photos/${photo.id}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -74,8 +84,16 @@ export default function PhotoCard({ photo, onUpdated }) {
       onUpdated?.();
     } catch (err) {
       console.error(err);
-      alert("Błąd podczas usuwania.");
+      setErrorMessage("Błąd podczas usuwania.");
+    } finally {
+      setConfirmingDelete(false);
     }
+  };
+
+  // Anulowanie usunięcia
+  const cancelDelete = () => {
+    setErrorMessage("");
+    setConfirmingDelete(false);
   };
 
   return (
@@ -157,7 +175,7 @@ export default function PhotoCard({ photo, onUpdated }) {
             Edytuj
           </button>
           <button
-            onClick={deletePhoto}
+            onClick={onClickDelete}
             className="bg-red-600 text-xs text-white px-2 py-1 rounded"
           >
             Usuń
@@ -175,6 +193,35 @@ export default function PhotoCard({ photo, onUpdated }) {
           <p className="text-sm text-gray-700 font-semibold">Cena: {photo.price} zł</p>
         </div>
       )}
+
+      {/* INLINE POTWIERDZENIE USUNIĘCIA */}
+      {confirmingDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded shadow-lg max-w-xs w-full text-center">
+            <p className="mb-4">Na pewno chcesz usunąć ten plik?</p>
+
+            {errorMessage && (
+              <p className="mb-2 text-red-600 text-sm">{errorMessage}</p>
+            )}
+
+            <div className="flex justify-center space-x-4">
+              <button
+                onClick={confirmDelete}
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              >
+                Tak, usuń
+              </button>
+              <button
+                onClick={cancelDelete}
+                className="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
+              >
+                Anuluj
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* KONIEC INLINE CONFIRM */}
     </div>
   );
 }

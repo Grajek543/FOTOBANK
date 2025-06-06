@@ -1,4 +1,3 @@
-// src/pages/MyPhotos.js
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import api from "../api/axios";
 import PhotoCard from "../components/PhotoCard";
@@ -16,6 +15,10 @@ export default function MyPhotos() {
   const inputRef = useRef(null);
   const [me, setMe] = useState(null);
   const [photoCount, setPhotoCount] = useState(0);
+
+  // STANY na komunikat zamiast alertów
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("info");
 
   useEffect(() => {
     if (!token) return;
@@ -44,7 +47,6 @@ export default function MyPhotos() {
       .catch(console.error);
   }, [token]);
 
-
   const fetchPhotos = useCallback(() => {
     if (!token) return;
     api
@@ -55,7 +57,7 @@ export default function MyPhotos() {
       .catch(console.error);
   }, [token]);
 
-    const updatePhotosAndCount = useCallback(() => {
+  const updatePhotosAndCount = useCallback(() => {
     fetchPhotos();
     refreshPhotoCount();
   }, [fetchPhotos, refreshPhotoCount]);
@@ -152,10 +154,13 @@ export default function MyPhotos() {
       setProgress({});
       if (inputRef.current) inputRef.current.value = "";
       updatePhotosAndCount();
-      alert("Wysłano!");
+
+      setMessageType("success");
+      setMessage("Wysłano!");
     } catch (err) {
       console.error("uploadMany –", err.response?.status, err.response?.data);
-      alert("Błąd uploadu.");
+      setMessageType("error");
+      setMessage("Błąd uploadu.");
     }
   };
 
@@ -168,7 +173,10 @@ export default function MyPhotos() {
           Twoje konto ma zablokowaną możliwość dodawania nowych zdjęć.
         </div>
       ) : (
-        <form onSubmit={uploadMany} className="border p-4 rounded-xl space-y-6 shadow">
+        <form
+          onSubmit={uploadMany}
+          className="border p-4 rounded-xl space-y-6 shadow"
+        >
           <input
             ref={inputRef}
             type="file"
@@ -179,20 +187,27 @@ export default function MyPhotos() {
           />
 
           {files.map((file, idx) => (
-            <div key={file.name} className="border p-4 rounded bg-white shadow space-y-2">
+            <div
+              key={file.name}
+              className="border p-4 rounded bg-white shadow space-y-2"
+            >
               <h2 className="font-semibold">{file.name}</h2>
 
               <input
                 type="text"
                 value={photoData[idx]?.title}
-                onChange={(e) => updatePhotoField(idx, "title", e.target.value)}
+                onChange={(e) =>
+                  updatePhotoField(idx, "title", e.target.value)
+                }
                 placeholder="Tytuł"
                 className="w-full border p-2 rounded"
               />
 
               <textarea
                 value={photoData[idx]?.description}
-                onChange={(e) => updatePhotoField(idx, "description", e.target.value)}
+                onChange={(e) =>
+                  updatePhotoField(idx, "description", e.target.value)
+                }
                 placeholder="Opis"
                 className="w-full border p-2 rounded"
               />
@@ -200,7 +215,9 @@ export default function MyPhotos() {
               <input
                 type="number"
                 value={photoData[idx]?.price}
-                onChange={(e) => updatePhotoField(idx, "price", parseFloat(e.target.value))}
+                onChange={(e) =>
+                  updatePhotoField(idx, "price", parseFloat(e.target.value))
+                }
                 placeholder="Cena"
                 className="w-32 border p-2 rounded"
                 min="0"
@@ -239,6 +256,19 @@ export default function MyPhotos() {
             <button className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg">
               Wyślij ({files.length})
             </button>
+          )}
+
+          {/* WYŚWIETLANIE KOMUNIKATU INLINE */}
+          {message && (
+            <p
+              className={
+                messageType === "error"
+                  ? "mt-2 text-red-600 text-sm"
+                  : "mt-2 text-green-600 text-sm"
+              }
+            >
+              {message}
+            </p>
           )}
         </form>
       )}

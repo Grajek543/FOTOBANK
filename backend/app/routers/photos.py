@@ -36,19 +36,27 @@ def create_thumbnail(src_path: Path, dst_path: Path) -> None:
         if src_path.suffix.lower() in {".jpg", ".jpeg", ".png"}:
             from PIL import Image
             with Image.open(src_path) as im:
+                # Konwersja do RGB (usuwa kanał alfa, jeśli jest)
+                if im.mode in ("RGBA", "LA") or (im.mode == "P" and "transparency" in im.info):
+                    im = im.convert("RGB")
+
                 im.thumbnail((320, 320))
                 im.save(dst_path, format="JPEG", quality=85)
         else:
-            dst_path = dst_path.with_suffix(".jpg")
-            subprocess.run(
-                [
-                    "ffmpeg", "-i", str(src_path), "-ss", "00:00:01.000",
-                    "-vframes", "1", "-vf", "scale=320:-1", str(dst_path)
-                ],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                check=False,
-            )
+            # ... (pozostała obsługa wideo)
+            import subprocess
+            # (np. komenda ffmpeg)
+            command = [
+                "ffmpeg",
+                "-i",
+                str(src_path),
+                "-vf",
+                "thumbnail,scale=320:-1",
+                "-frames:v",
+                "1",
+                str(dst_path),
+            ]
+            subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except Exception as e:
         print(f"Błąd przy generowaniu miniatury: {e}")
 

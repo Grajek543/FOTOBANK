@@ -9,16 +9,24 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  // STANY na komunikat zamiast alertów
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("info"); // "info" | "error" | "success"
+
   const handleLogin = (e) => {
     e.preventDefault();
     setLoading(true);
+    setMessage("");
 
-    api.post(`${API_URL}/users/login`, { email, password })
+    api
+      .post(`${API_URL}/users/login`, { email, password })
       .then((res) => {
-        alert("Zalogowano!");
+        setMessageType("success");
+        setMessage("Zalogowano pomyślnie!");
+
         localStorage.setItem("access_token", res.data.access_token);
         localStorage.setItem("user_id", res.data.user_id);
-        localStorage.setItem("role", res.data.role); 
+        localStorage.setItem("role", res.data.role);
         navigate("/");
       })
       .catch((err) => {
@@ -26,16 +34,22 @@ function Login() {
         const detail = err.response?.data?.detail;
 
         if (err.response?.status === 403) {
-          alert(detail);
+          setMessageType("error");
+          setMessage(detail || "Dostęp zabroniony.");
           if (detail?.includes("nie zostało aktywowane")) {
-            if (window.confirm("Chcesz przejść do strony aktywacji konta?")) {
+            if (
+              window.confirm("Chcesz przejść do strony aktywacji konta?")
+            ) {
               navigate("/activate");
             }
           }
         } else if (err.response?.status === 401) {
-          alert("Nieprawidłowy login lub hasło.");
+          // Zawsze wyświetlamy tylko: "Nieprawidłowy login lub hasło."
+          setMessageType("error");
+          setMessage("Nieprawidłowy login lub hasło.");
         } else {
-          alert("Błąd logowania");
+          setMessageType("error");
+          setMessage("Błąd logowania");
         }
       })
       .finally(() => setLoading(false));
@@ -69,11 +83,27 @@ function Login() {
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-2 rounded-md text-white ${loading ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'}`}
+            className={`w-full py-2 rounded-md text-white ${
+              loading ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"
+            }`}
           >
             {loading ? "Logowanie..." : "Zaloguj się"}
           </button>
         </form>
+
+        {/* WYŚWIETLANIE KOMUNIKATU INLINE */}
+        {message && (
+          <p
+            className={
+              messageType === "error"
+                ? "mt-2 text-red-600 text-sm"
+                : "mt-2 text-green-600 text-sm"
+            }
+          >
+            {message}
+          </p>
+        )}
+
         <p className="text-sm text-center mt-4">
           <a href="/forgot" className="text-blue-600 hover:underline">
             Nie pamiętasz hasła?

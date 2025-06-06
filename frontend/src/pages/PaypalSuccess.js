@@ -15,7 +15,6 @@ function PaypalSuccess() {
     const orderId = params.get("token");
 
     if (!orderId) {
-      alert("Brak ID zamówienia.");
       navigate("/");
       return;
     }
@@ -24,12 +23,10 @@ function PaypalSuccess() {
       headers: { Authorization: `Bearer ${token}` },
     })
     .then(() => {
-      alert("Płatność zakończona sukcesem!");
       navigate("/");
     })
     .catch((err) => {
       console.error("Błąd potwierdzenia płatności:", err);
-      alert("Błąd płatności.");
       navigate("/");
     });
   }, [location, navigate, token]);

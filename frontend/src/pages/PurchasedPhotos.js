@@ -22,7 +22,9 @@ function PurchasedPhotos() {
   const normalize = (path) => {
     if (!path) return "";
     if (/^https?:\/\//i.test(path)) return path.replace(/\\/g, "/");
-    return `${API_URL}${path.startsWith("/") ? "" : "/"}${path.replace(/\\/g, "/")}`;
+    return `${API_URL}${
+      path.startsWith("/") ? "" : "/"
+    }${path.replace(/\\/g, "/")}`;
   };
 
   const downloadPhoto = async (photoId, fileName) => {
@@ -51,7 +53,9 @@ function PurchasedPhotos() {
 
   return (
     <div className="min-h-screen p-8">
-      <h2 className="text-2xl font-bold mb-6 text-center">Zakupione zdjęcia</h2>
+      <h2 className="text-2xl font-bold mb-6 text-center">
+        Zakupione zdjęcia
+      </h2>
       {photos.length === 0 ? (
         <p className="text-center text-gray-600">Brak zakupionych zdjęć.</p>
       ) : (
@@ -59,10 +63,16 @@ function PurchasedPhotos() {
           {photos.map((photo) => {
             const isVideo = /\.(mp4|mov|mkv)$/i.test(photo.file_url);
             return (
-              <div key={photo.id} className="bg-white shadow rounded overflow-hidden">
+              <div
+                key={photo.id}
+                className="bg-white shadow rounded overflow-hidden"
+              >
                 {isVideo ? (
                   <video controls className="w-full h-48 object-cover">
-                    <source src={normalize(photo.file_url)} type="video/mp4" />
+                    <source
+                      src={normalize(photo.file_url)}
+                      type="video/mp4"
+                    />
                     Twoja przeglądarka nie wspiera wideo.
                   </video>
                 ) : (

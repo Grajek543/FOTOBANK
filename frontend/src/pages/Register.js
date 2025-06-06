@@ -11,9 +11,14 @@ function Register() {
 
   const navigate = useNavigate();
 
+  // STANY na komunikat zamiast alertów
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("info"); // "info" | "error" | "success"
+
   const handleRegister = (e) => {
     e.preventDefault();
     setLoading(true);
+    setMessage("");
 
     api
       .post(`${API_URL}/users/register`, {
@@ -22,15 +27,18 @@ function Register() {
         username,
       })
       .then((res) => {
-        alert("Konto założone! Sprawdź e-mail i aktywuj konto.");
+        setMessageType("success");
+        setMessage("Konto założone! Sprawdź e-mail i aktywuj konto.");
         localStorage.setItem("pending_email", email);
         navigate("/activate");
       })
       .catch((err) => {
         if (err.response) {
-          alert("Błąd rejestracji: " + err.response.data.detail);
+          setMessageType("error");
+          setMessage("Błąd rejestracji: " + err.response.data.detail);
         } else {
-          alert("Nieznany błąd rejestracji");
+          setMessageType("error");
+          setMessage("Nieznany błąd rejestracji");
         }
       })
       .finally(() => setLoading(false));
@@ -74,11 +82,26 @@ function Register() {
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-2 rounded-md text-white ${loading ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'}`}
+            className={`w-full py-2 rounded-md text-white ${
+              loading ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"
+            }`}
           >
             {loading ? "Rejestrowanie..." : "Zarejestruj się"}
           </button>
         </form>
+
+        {/* WYŚWIETLANIE KOMUNIKATU INLINE */}
+        {message && (
+          <p
+            className={
+              messageType === "error"
+                ? "mt-2 text-red-600 text-sm"
+                : "mt-2 text-green-600 text-sm"
+            }
+          >
+            {message}
+          </p>
+        )}
       </div>
     </div>
   );
