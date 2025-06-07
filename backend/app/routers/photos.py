@@ -14,11 +14,16 @@ from sqlalchemy.orm import Session, joinedload, aliased
 from sqlalchemy import or_, func, and_, text
 
 from app.schemas import PhotoOut
-from app.models import UploadSession, Photo
-from app.database import SessionLocal
-from app.dependencies import get_current_user
+from app.models import UploadSession, Photo, User
+from app.database import SessionLocal, get_db
+from app.dependencies import get_current_user, check_admin
 from app import models, schemas
 from app.utils.thumbnails import create_video_thumb, create_image_thumb
+from app.dependencies import check_admin
+from typing import List
+
+
+from sqlalchemy.orm import Session
 
 MEDIA_DIR: Path = Path("media")
 THUMBS_DIR: Path = MEDIA_DIR / "thumbs"
@@ -102,6 +107,16 @@ def add_photo_via_proc(db: Session, title, description, category, price, file_pa
 
 
 router = APIRouter(prefix="/photos", tags=["photos"])
+
+@router.get("/user/{user_id}", response_model=List[schemas.PhotoOut])
+def get_user_photos(
+    user_id: int,
+    admin_user: User = Depends(check_admin),
+    db: Session = Depends(get_db),
+):
+    # <- body must be here, indented four spaces
+    photos = db.query(models.Photo).filter(models.Photo.owner_id == user_id).all()
+    return [build_photo_response(p) for p in photos]
 
 @router.post("/upload", response_model=List[schemas.PhotoOut])
 async def upload_photos(
@@ -225,11 +240,22 @@ def get_file(photo_id: int, db: Session = Depends(get_db)):
     return FileResponse(path, media_type=media_type)
 
 @router.delete("/{photo_id}", status_code=204)
-def delete_photo(photo_id: int, user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
-    photo = db.query(models.Photo).filter(models.Photo.id == photo_id, models.Photo.owner_id == user_id).first()
+def delete_photo(
+    photo_id: int,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user),
+    admin_user: User = Depends(check_admin),
+):
+    # Pobierz zdjęcie bez warunku na owner_id
+    photo = db.query(models.Photo).filter(models.Photo.id == photo_id).first()
     if not photo:
-        raise HTTPException(404, "Zdjęcie nie znalezione lub brak dostępu")
+        raise HTTPException(status_code=404, detail="Zdjęcie nie znalezione")  # not found
 
+    # tylko właściciel lub admin
+    if photo.owner_id != current_user_id and admin_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Brak dostępu")  # forbidden
+
+    # usuń pliki z dysku
     for _p in (photo.file_path, photo.thumb_path):
         if _p and Path(_p).exists():
             Path(_p).unlink(missing_ok=True)
@@ -242,12 +268,18 @@ def update_photo(
     photo_id: int,
     photo_data: schemas.PhotoUpdate = Body(...),
     category_ids: List[int] = Body(default=[]),
-    user_id: int = Depends(get_current_user),
     db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user),
+    admin_user: User = Depends(check_admin),
 ):
-    photo = db.query(models.Photo).filter(models.Photo.id == photo_id, models.Photo.owner_id == user_id).first()
+    # Pobierz zdjęcie bez warunku na owner_id
+    photo = db.query(models.Photo).filter(models.Photo.id == photo_id).first()
     if not photo:
-        raise HTTPException(404, "Zdjęcie nie znalezione lub brak dostępu")
+        raise HTTPException(status_code=404, detail="Zdjęcie nie znalezione")
+
+    # tylko właściciel lub admin
+    if photo.owner_id != current_user_id and admin_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Brak dostępu")
 
     if photo_data.title is not None:
         photo.title = photo_data.title

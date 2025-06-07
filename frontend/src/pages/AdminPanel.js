@@ -1,6 +1,7 @@
 // src/pages/AdminPanel.js
 import React, { useEffect, useState } from "react";
 import api from "../api/axios";
+import { Link } from "react-router-dom";
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
 export default function AdminPanel() {
@@ -238,7 +239,7 @@ export default function AdminPanel() {
     {users.map((u) => (
       <tr key={u.id} className="text-center">
         <td className="p-2 border">{u.id}</td>
-        <td className="p-2 border">{u.email}</td>
+        <td className="p-2 border"><Link to={`/admin/users/${u.id}/photos`} className="text-blue-600 hover:underline">{u.email}</Link></td>
         <td className="p-2 border">{u.username || "brak"}</td>
         <td className="p-2 border">{u.role}</td>
 

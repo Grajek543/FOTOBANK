@@ -21,6 +21,7 @@ import RequestReset from "./pages/RequestReset";
 import ResetPassword from "./pages/ResetPassword";
 import PaypalSuccess from "./pages/PaypalSuccess";
 import PurchasedPhotos from "./pages/PurchasedPhotos";
+import UserPhotosAdmin from "./pages/UserPhotosAdmin";
 
 import api from "./api/axios";
 
@@ -78,11 +79,8 @@ function AppContent() {
           <Route path="/reset" element={<ResetPassword />} />
           <Route path="/paypal-success" element={<PaypalSuccess />} />
           <Route path="/purchased" element={<PurchasedPhotos />} />
-
-          <Route
-            path="/admin"
-            element={userRole === "admin" ? <AdminPanel /> : <Navigate to="/" />}
-          />
+          <Route path="/admin" element={userRole === "admin" ? <AdminPanel /> : <Navigate to="/" />} />
+          <Route path="/admin/users/:userId/photos" element={userRole === "admin" ? <UserPhotosAdmin /> : <Navigate to="/" />} />
           <Route path="/photo/:photoId" element={<PhotoDetails />} />
           <Route path="*" element={<div>404 w React Router / brak dopasowanej ścieżki</div>} />
         </Routes>
