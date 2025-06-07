@@ -13,16 +13,37 @@ export default function AdminPanel() {
   const [pendingBanChange, setPendingBanChange] = useState(null); // { id, newBanned }
   const [pendingFullBanChange, setPendingFullBanChange] = useState(null); // { id, newFullBanned }
   const [errorMessage, setErrorMessage] = useState("");
+  const [userStats, setUserStats] = useState({});
+  const [photoStats, setPhotoStats] = useState({});
+  const [purchaseStats, setPurchaseStats] = useState({});
+  const [miscStats, setMiscStats] = useState({});
+  const [activeTab, setActiveTab] = useState("users");
+
+
+
 
   useEffect(() => {
     if (!token) return;
-    api
-      .get("/users/all", { headers: { Authorization: `Bearer ${token}` } })
-      .then((res) => setUsers(res.data))
-      .catch((err) => {
-        console.error("Błąd ładowania użytkowników:", err);
-      });
+
+    api.get("/users/all", { headers: { Authorization: `Bearer ${token}` } })
+    .then((res) => setUsers(res.data));
+
+    api.get("/users/stats/users",     { headers: { Authorization: `Bearer ${token}` } }).then(res => setUserStats(res.data));
+    api.get("/users/stats/photos",    { headers: { Authorization: `Bearer ${token}` } }).then(res => setPhotoStats(res.data));
+    api.get("/users/stats/purchases", { headers: { Authorization: `Bearer ${token}` } }).then(res => setPurchaseStats(res.data));
+    api.get("/users/stats/misc",      { headers: { Authorization: `Bearer ${token}` } }).then(res => setMiscStats(res.data));
   }, [token]);
+
+  function StatBox({ label, value }) {
+  return (
+    <div className="p-4 border rounded text-center">
+      <p className="text-gray-500">{label}</p>
+      <p className="text-2xl font-bold">{value ?? "-"}</p>
+    </div>
+  );
+}
+
+
 
   // ********** FUNKCJA USUWANIA UŻYTKOWNIKA **********
 
@@ -139,88 +160,144 @@ export default function AdminPanel() {
   };
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-6">Panel administratora</h2>
+  <div className="p-6">
+    <h2 className="text-2xl font-bold mb-6">Panel administratora</h2>
 
-      <table className="w-full border-collapse">
-        <thead>
-          <tr className="bg-gray-100 text-center">
-            <th className="p-2 border">ID</th>
-            <th className="p-2 border">Email</th>
-            <th className="p-2 border">Username</th>
-            <th className="p-2 border">Rola</th>
-            <th className="p-2 border">Blokada przesyłania zdjęć</th>
-            <th className="p-2 border">Pełna blokada konta</th>
-            <th className="p-2 border">Ustaw rolę</th>
-            <th className="p-2 border">Usuń konto</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((u) => (
-            <tr key={u.id} className="text-center">
-              <td className="p-2 border">{u.id}</td>
-              <td className="p-2 border">{u.email}</td>
-              <td className="p-2 border">{u.username || "brak"}</td>
-              <td className="p-2 border">{u.role}</td>
+    <h3 className="text-2xl font-bold mb-4">Statystyki</h3>
+<div className="mb-4 flex flex-wrap gap-2">
+  <button onClick={() => setActiveTab("users")} className={`px-4 py-2 rounded ${activeTab === "users" ? "bg-blue-600 text-white" : "bg-gray-200 hover:bg-gray-300"}`}>Użytkownicy</button>
+  <button onClick={() => setActiveTab("photos")} className={`px-4 py-2 rounded ${activeTab === "photos" ? "bg-blue-600 text-white" : "bg-gray-200 hover:bg-gray-300"}`}>Zdjęcia</button>
+  <button onClick={() => setActiveTab("purchases")} className={`px-4 py-2 rounded ${activeTab === "purchases" ? "bg-blue-600 text-white" : "bg-gray-200 hover:bg-gray-300"}`}>Zakupy / Płatności</button>
+  <button onClick={() => setActiveTab("misc")} className={`px-4 py-2 rounded ${activeTab === "misc" ? "bg-blue-600 text-white" : "bg-gray-200 hover:bg-gray-300"}`}>Inne</button>
+</div>
 
-              {/* Blokada przesyłania zdjęć */}
-              <td className="p-2 border">
-                {/* checkbox nie zmienia się automatycznie – onClick wywołuje inline-confirm */}
-                <input
-                  type="checkbox"
-                  checked={u.banned}
-                  onClick={() => onClickBanToggle(u.id, u.banned)}
-                  readOnly
-                />
-              </td>
+{activeTab === "users" && (
+  <div className="mb-6 p-4 bg-white rounded shadow">
+    <h3 className="text-xl font-bold mb-2">Statystyki użytkowników</h3>
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <StatBox label="Łączna liczba kont" value={userStats.users_total} />
+      <StatBox label="Aktywne konta" value={userStats.users_active} />
+      <StatBox label="Zablokowani" value={userStats.users_banned} />
+      <StatBox label="Zablokowane przesyłanie" value={userStats.users_upload_blocked} />
+      <StatBox label="Administratorzy" value={userStats.admins_count} />
+    </div>
+  </div>
+)}
 
-              {/* Pełna blokada konta */}
-              <td className="p-2 border">
-                <input
-                  type="checkbox"
-                  checked={u.full_banned}
-                  onClick={() => onClickFullBanToggle(u.id, u.full_banned)}
-                  readOnly
-                />
-              </td>
+{activeTab === "photos" && (
+  <div className="mb-6 p-4 bg-white rounded shadow">
+    <h3 className="text-xl font-bold mb-2">Statystyki zdjęć</h3>
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <StatBox label="Liczba zdjęć" value={photoStats.photos_total} />
+      <StatBox label="Średnia cena" value={`${photoStats.photos_avg_price} zł`} />
+      <StatBox label="Bez kategorii" value={photoStats.photos_without_category} />
+      <StatBox label="Z zakupami" value={photoStats.photos_with_purchases} />
+    </div>
+  </div>
+)}
 
-              {/* Ustaw rolę */}
-              <td className="p-2 border space-x-2">
-                <button
-                  onClick={() => onClickRoleChange(u.id, "admin")}
-                  className={`px-3 py-1 rounded ${
-                    u.role === "admin"
-                      ? "bg-green-600 text-white"
-                      : "bg-gray-300 hover:bg-gray-400"
-                  }`}
-                >
-                  admin
-                </button>
-                <button
-                  onClick={() => onClickRoleChange(u.id, "user")}
-                  className={`px-3 py-1 rounded ${
-                    u.role === "user"
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-300 hover:bg-gray-400"
-                  }`}
-                >
-                  user
-                </button>
-              </td>
+{activeTab === "purchases" && (
+  <div className="mb-6 p-4 bg-white rounded shadow">
+    <h3 className="text-xl font-bold mb-2">Zakupy i płatności</h3>
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <StatBox label="Liczba zakupów" value={purchaseStats.purchases_total} />
+      <StatBox label="Łączny przychód" value={`${purchaseStats.revenue_total} zł`} />
+      <StatBox label="Kupujący" value={purchaseStats.buyers_count} />
+      <StatBox label="Średni przychód / użytkownik" value={`${purchaseStats.avg_revenue_per_user} zł`} />
+    </div>
+  </div>
+)}
 
-              {/* Usuń konto */}
-              <td className="p-2 border">
-                <button
-                  onClick={() => onClickDeleteUser(u.id)}
-                  className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
-                >
-                  Usuń
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+{activeTab === "misc" && (
+  <div className="mb-6 p-4 bg-white rounded shadow">
+    <h3 className="text-xl font-bold mb-2">Inne ciekawe</h3>
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <StatBox label="Kategorie" value={miscStats.categories_total} />
+      <StatBox label="Najaktywniejszy użytkownik (ID)" value={miscStats.most_active_user_id} />
+      <StatBox label="Najdroższy koszyk" value={`${miscStats.largest_cart_value} zł`} />
+      <StatBox label="Średnia wartość koszyka" value={`${miscStats.avg_cart_value} zł`} />
+    </div>
+  </div>
+)}
+
+<h3 className="text-2xl font-bold mb-4">Użytkownicy</h3>
+<table className="w-full border-collapse">
+  <thead>
+    <tr className="bg-gray-100 text-center">
+      <th className="p-2 border">ID</th>
+      <th className="p-2 border">Email</th>
+      <th className="p-2 border">Username</th>
+      <th className="p-2 border">Rola</th>
+      <th className="p-2 border">Blokada przesyłania zdjęć</th>
+      <th className="p-2 border">Pełna blokada konta</th>
+      <th className="p-2 border">Ustaw rolę</th>
+      <th className="p-2 border">Usuń konto</th>
+    </tr>
+  </thead>
+  <tbody>
+    {users.map((u) => (
+      <tr key={u.id} className="text-center">
+        <td className="p-2 border">{u.id}</td>
+        <td className="p-2 border">{u.email}</td>
+        <td className="p-2 border">{u.username || "brak"}</td>
+        <td className="p-2 border">{u.role}</td>
+
+        <td className="p-2 border">
+          <input
+            type="checkbox"
+            checked={u.banned}
+            onClick={() => onClickBanToggle(u.id, u.banned)}
+            readOnly
+          />
+        </td>
+
+        <td className="p-2 border">
+          <input
+            type="checkbox"
+            checked={u.full_banned}
+            onClick={() => onClickFullBanToggle(u.id, u.full_banned)}
+            readOnly
+          />
+        </td>
+
+        <td className="p-2 border space-x-2">
+          <button
+            onClick={() => onClickRoleChange(u.id, "admin")}
+            className={`px-3 py-1 rounded ${
+              u.role === "admin"
+                ? "bg-green-600 text-white"
+                : "bg-gray-300 hover:bg-gray-400"
+            }`}
+          >
+            admin
+          </button>
+          <button
+            onClick={() => onClickRoleChange(u.id, "user")}
+            className={`px-3 py-1 rounded ${
+              u.role === "user"
+                ? "bg-blue-600 text-white"
+                : "bg-gray-300 hover:bg-gray-400"
+            }`}
+          >
+            user
+          </button>
+        </td>
+
+        <td className="p-2 border">
+          <button
+            onClick={() => onClickDeleteUser(u.id)}
+            className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
+          >
+            Usuń
+          </button>
+        </td>
+      </tr>
+    ))}
+  </tbody>
+</table>
+
+
+
 
       {/* INLINE CONFIRM: USUNIĘCIE UŻYTKOWNIKA */}
       {pendingDeleteUserId !== null && (

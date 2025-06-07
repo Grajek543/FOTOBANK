@@ -324,6 +324,31 @@ def toggle_full_ban(user_id: int, status: FullBanStatus, db: Session = Depends(g
     return user
 
 
+@router.get("/stats/users")
+def user_stats(db: Session = Depends(get_db), admin_user: models.User = Depends(check_admin)):
+    result = db.execute(text("SELECT get_user_stats()")).scalar()
+    import json
+    return json.loads(result)
+
+@router.get("/stats/photos")
+def photo_stats(db: Session = Depends(get_db), admin_user: models.User = Depends(check_admin)):
+    result = db.execute(text("SELECT get_photo_stats()")).scalar()
+    import json
+    return json.loads(result)
+
+@router.get("/stats/purchases")
+def purchase_stats(db: Session = Depends(get_db), admin_user: models.User = Depends(check_admin)):
+    result = db.execute(text("SELECT get_purchase_stats()")).scalar()
+    import json
+    return json.loads(result)
+
+@router.get("/stats/misc")
+def misc_stats(db: Session = Depends(get_db), admin_user: models.User = Depends(check_admin)):
+    result = db.execute(text("SELECT get_misc_stats()")).scalar()
+    import json
+    return json.loads(result)
+
+
 # ----------------------------- AKTYWACJA -----------------------------
 @router.post("/resend-code")
 def resend_activation_code(data: ResendRequest, db: Session = Depends(get_db)):

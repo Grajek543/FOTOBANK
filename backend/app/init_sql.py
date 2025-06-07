@@ -141,3 +141,106 @@ def create_sql_objects():
         ("Swieta"), ("Halloween"), ("Wielkanoc"), ("Biznes"), ("Finanse"),
         ("Muzyka"), ("Instrumenty"), ("Sztuka"), ("Rzezba"), ("Dziecko")
         """))
+
+        # 9. Funkcja: Statystyki systemowe
+        conn.execute(text("""
+        CREATE FUNCTION IF NOT EXISTS get_system_stats()
+        RETURNS JSON
+        DETERMINISTIC
+        READS SQL DATA
+        BEGIN
+            DECLARE result JSON;
+            SELECT JSON_OBJECT(
+                'users',     (SELECT COUNT(*) FROM users),
+                'photos',    (SELECT COUNT(*) FROM photos),
+                'purchases', (SELECT COUNT(*) FROM purchases)
+            ) INTO result;
+            RETURN result;
+        END
+        """))
+        # 10. Funkcja: Statystyki użytkowników
+        conn.execute(text("""
+        CREATE FUNCTION IF NOT EXISTS get_user_stats()
+        RETURNS JSON
+        DETERMINISTIC
+        READS SQL DATA
+        BEGIN
+            DECLARE result JSON;
+            SELECT JSON_OBJECT(
+                'users_total',       (SELECT COUNT(*) FROM users),
+                'users_active',      (SELECT COUNT(*) FROM users WHERE is_active = 1),
+                'users_banned',      (SELECT COUNT(*) FROM users WHERE full_banned = 1),
+                'users_upload_blocked', (SELECT COUNT(*) FROM users WHERE banned = 1),
+                'admins_count',      (SELECT COUNT(*) FROM users WHERE role = 'admin')
+            ) INTO result;
+            RETURN result;
+        END
+        """))
+
+        # 11. Funkcja: Statystyki zdjęć
+        conn.execute(text("""
+        CREATE FUNCTION IF NOT EXISTS get_photo_stats()
+        RETURNS JSON
+        DETERMINISTIC
+        READS SQL DATA
+        BEGIN
+            DECLARE result JSON;
+            SELECT JSON_OBJECT(
+                'photos_total',           (SELECT COUNT(*) FROM photos),
+                'photos_avg_price',       (SELECT ROUND(AVG(price), 2) FROM photos),
+                'photos_without_category',(SELECT COUNT(*) FROM photos p LEFT JOIN photo_categories pc ON p.id = pc.photo_id WHERE pc.photo_id IS NULL),
+                'photos_with_purchases',  (SELECT COUNT(DISTINCT photo_id) FROM purchases)
+            ) INTO result;
+            RETURN result;
+        END
+        """))
+
+        # 12. Funkcja: Statystyki zakupów i płatności
+        conn.execute(text("""
+        CREATE FUNCTION IF NOT EXISTS get_purchase_stats()
+        RETURNS JSON
+        DETERMINISTIC
+        READS SQL DATA
+        BEGIN
+            DECLARE result JSON;
+            SELECT JSON_OBJECT(
+                'purchases_total',     (SELECT COUNT(*) FROM purchases),
+                'revenue_total',       (SELECT ROUND(SUM(p.price), 2) FROM purchases pu JOIN photos p ON pu.photo_id = p.id),
+                'buyers_count',        (SELECT COUNT(DISTINCT user_id) FROM purchases),
+                'avg_revenue_per_user',(SELECT ROUND(SUM(p.price)/COUNT(DISTINCT pu.user_id), 2)
+                                        FROM purchases pu JOIN photos p ON pu.photo_id = p.id)
+            ) INTO result;
+            RETURN result;
+        END
+        """))
+
+        # 13. Funkcja: Inne ciekawe statystyki
+        conn.execute(text("""
+        CREATE FUNCTION IF NOT EXISTS get_misc_stats()
+        RETURNS JSON
+        DETERMINISTIC
+        READS SQL DATA
+        BEGIN
+            DECLARE result JSON;
+            SELECT JSON_OBJECT(
+                'categories_total',     (SELECT COUNT(*) FROM categories),
+                'most_active_user_id', (SELECT owner_id FROM photos GROUP BY owner_id ORDER BY COUNT(*) DESC LIMIT 1),
+                'largest_cart_value',  (SELECT ROUND(MAX(total), 2) FROM (
+                                            SELECT SUM(p.price) AS total
+                                            FROM cart c
+                                            JOIN cart_items ci ON ci.cart_id = c.id
+                                            JOIN photos p ON p.id = ci.photo_id
+                                            GROUP BY c.id
+                                        ) AS subq),
+                'avg_cart_value',      (SELECT ROUND(AVG(total), 2) FROM (
+                                            SELECT SUM(p.price) AS total
+                                            FROM cart c
+                                            JOIN cart_items ci ON ci.cart_id = c.id
+                                            JOIN photos p ON p.id = ci.photo_id
+                                            GROUP BY c.id
+                                        ) AS subq)
+            ) INTO result;
+            RETURN result;
+        END
+        """))
+        
