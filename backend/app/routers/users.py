@@ -246,43 +246,60 @@ def refresh_token(req: RefreshRequest, db: Session = Depends(get_db)):
 # ----------------------------- ME / UPDATE / DELETE -----------------------------
 @router.get("/me", response_model=schemas.UserRead)
 def get_current_user_info(current_user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.id == current_user_id).first()
-    if not user:
+    stmt = text("""
+        SELECT id, email, username, role, banned, full_banned, is_active 
+        FROM users WHERE id = :uid
+    """)
+    row = db.execute(stmt, {"uid": current_user_id}).mappings().first()
+    if not row:
         raise HTTPException(status_code=404, detail="User not found")
-    return user
+    return dict(row)
+
 
 
 @router.put("/update", response_model=schemas.UserRead)
 def update_user(user_update: schemas.UserUpdate, current_user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.id == current_user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    user.username = user_update.username
+    db.execute(text("""
+        UPDATE users SET username = :username WHERE id = :uid
+    """), {"username": user_update.username, "uid": current_user_id})
     db.commit()
-    db.refresh(user)
-    return user
+
+    row = db.execute(text("""
+        SELECT id, email, username, role, banned, full_banned, is_active 
+        FROM users WHERE id = :uid
+    """), {"uid": current_user_id}).mappings().first()
+    if not row:
+        raise HTTPException(status_code=404, detail="User not found after update")
+    return dict(row)
+
 
 
 @router.delete("/delete", status_code=204)
 def delete_user(current_user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.id == current_user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    db.delete(user)
+    db.execute(text("DELETE FROM users WHERE id = :uid"), {"uid": current_user_id})
     db.commit()
+
 
 
 @router.put("/change-password")
 def change_password(data: PasswordChange, current_user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.id == current_user_id).first()
+    user = db.execute(text("""
+        SELECT hashed_password FROM users WHERE id = :uid
+    """), {"uid": current_user_id}).mappings().first()
+
     if not user:
         raise HTTPException(status_code=404, detail="Użytkownik nie znaleziony")
-    if not pwd_context.verify(data.old_password, user.hashed_password):
+
+    if not pwd_context.verify(data.old_password, user["hashed_password"]):
         raise HTTPException(status_code=400, detail="Stare hasło jest nieprawidłowe")
 
-    user.hashed_password = pwd_context.hash(data.new_password)
+    new_hash = pwd_context.hash(data.new_password)
+    db.execute(text("UPDATE users SET hashed_password = :pwd WHERE id = :uid"), {
+        "pwd": new_hash, "uid": current_user_id
+    })
     db.commit()
     return {"message": "Hasło zostało zmienione"}
+
 
 
 # ----------------------------- ADMIN -----------------------------
