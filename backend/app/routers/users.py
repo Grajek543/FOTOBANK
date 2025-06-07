@@ -336,6 +336,116 @@ def photo_stats(db: Session = Depends(get_db), admin_user: models.User = Depends
     import json
     return json.loads(result)
 
+@router.get("/stats/my-photos")
+def my_photo_stats(
+    current_user_id: int = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    stmt = text("""
+        SELECT
+          (SELECT COUNT(*) FROM photos WHERE owner_id = :uid)                         AS photos_total,
+          (SELECT ROUND(AVG(price),2) FROM photos WHERE owner_id = :uid)             AS photos_avg_price,
+          (SELECT COUNT(*)                                                           
+             FROM photos p
+             LEFT JOIN photo_categories pc ON p.id = pc.photo_id
+             WHERE p.owner_id = :uid
+               AND pc.photo_id IS NULL
+          )                                                                           AS photos_without_category,
+          (SELECT COUNT(DISTINCT pu.photo_id)                                         
+             FROM purchases pu
+             JOIN photos p ON pu.photo_id = p.id
+             WHERE p.owner_id = :uid
+          )                                                                           AS photos_with_purchases
+    """)
+    row = db.execute(stmt, {"uid": current_user_id}).one()
+    return {
+        "photos_total": row.photos_total,
+        "photos_avg_price": float(row.photos_avg_price or 0),
+        "photos_without_category": row.photos_without_category,
+        "photos_with_purchases": row.photos_with_purchases,
+    }
+
+@router.get("/stats/my-purchases")
+def my_purchase_stats(
+    current_user_id: int = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    stmt = text("""
+        SELECT
+          (SELECT COUNT(*)                 FROM purchases WHERE user_id = :uid)   AS purchases_total,
+          (SELECT ROUND(SUM(total_cost),2) FROM purchases WHERE user_id = :uid)   AS revenue_total,
+          (SELECT ROUND(AVG(total_cost),2) FROM purchases WHERE user_id = :uid)   AS avg_purchase_value,
+          (SELECT COUNT(DISTINCT photo_id)  FROM purchases WHERE user_id = :uid)   AS distinct_photos_bought
+    """)
+    row = db.execute(stmt, {"uid": current_user_id}).one()
+    return {
+        "purchases_total": row.purchases_total,
+        "revenue_total": float(row.revenue_total or 0),
+        "avg_purchase_value": float(row.avg_purchase_value or 0),
+        "distinct_photos_bought": row.distinct_photos_bought,
+    }
+
+# ----------------------------- HISTORIA TRANSAKCJI -----------------------------
+@router.get("/history/purchases")
+def my_purchase_history(
+    current_user_id: int = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    stmt = text("""
+        SELECT
+          pu.id,
+          pu.photo_id,
+          p.title       AS photo_title,
+          pu.total_cost,
+          pu.purchase_date
+        FROM purchases pu
+        JOIN photos p ON pu.photo_id = p.id
+        WHERE pu.user_id = :uid
+        ORDER BY pu.purchase_date DESC
+    """)
+    rows = db.execute(stmt, {"uid": current_user_id}).fetchall()
+    return [
+        {
+            "id": r.id,
+            "photo_id": r.photo_id,
+            "photo_title": r.photo_title,
+            "total_cost": float(r.total_cost),
+            "purchase_date": r.purchase_date.isoformat(),
+        }
+        for r in rows
+    ]
+
+@router.get("/history/sales")
+def my_sales_history(
+    current_user_id: int = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    stmt = text("""
+        SELECT
+          pu.id,
+          pu.photo_id,
+          p.title       AS photo_title,
+          p.price       AS price,
+          pu.purchase_date
+        FROM purchases pu
+        JOIN photos p ON pu.photo_id = p.id
+        WHERE p.owner_id = :uid
+        ORDER BY pu.purchase_date DESC
+    """)
+    rows = db.execute(stmt, {"uid": current_user_id}).fetchall()
+    return [
+        {
+            "id": r.id,
+            "photo_id": r.photo_id,
+            "photo_title": r.photo_title,
+            "price": float(r.price),
+            "purchase_date": r.purchase_date.isoformat(),
+        }
+        for r in rows
+    ]
+
+
+
 @router.get("/stats/purchases")
 def purchase_stats(db: Session = Depends(get_db), admin_user: models.User = Depends(check_admin)):
     result = db.execute(text("SELECT get_purchase_stats()")).scalar()
@@ -465,3 +575,21 @@ def delete_user_full(
     db.commit()
 
     return {"detail": "Konto i dane użytkownika zostały usunięte"}
+
+
+@router.get("/stats/sales")
+def user_sales_stats(current_user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
+    stmt = text("""
+        SELECT
+          (SELECT COUNT(*) FROM photos WHERE owner_id = :uid) AS photos_uploaded,
+          (SELECT COUNT(*) FROM purchases pu JOIN photos p ON pu.photo_id = p.id WHERE p.owner_id = :uid) AS photos_sold,
+          (SELECT ROUND(SUM(p.price),2) FROM purchases pu JOIN photos p ON pu.photo_id = p.id WHERE p.owner_id = :uid) AS revenue_earned,
+          (SELECT ROUND(AVG(p.price),2) FROM purchases pu JOIN photos p ON pu.photo_id = p.id WHERE p.owner_id = :uid) AS avg_price_sold
+    """)
+    result = db.execute(stmt, {"uid": current_user_id}).one()
+    return {
+        "photos_uploaded": result.photos_uploaded,
+        "photos_sold": result.photos_sold,
+        "revenue_earned": result.revenue_earned or 0,
+        "avg_price_sold": result.avg_price_sold or 0,
+    }
