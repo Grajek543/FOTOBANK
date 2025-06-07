@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { FaSearch, FaUserCircle, FaShoppingCart } from "react-icons/fa";
 import api from "../api/axios";
+import logo from "../images/fotobank_200x50_bt.png";
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
 export default function Navbar({ isAuthenticated, setIsAuthenticated }) {
@@ -61,8 +62,8 @@ export default function Navbar({ isAuthenticated, setIsAuthenticated }) {
   return (
     <nav className="bg-white shadow-md">
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-        <Link to="/" className="text-xl font-bold">
-          FotoBank
+        <Link to="/" className="flex items-center">
+          <img src={logo} alt="Fotobank Logo" className="h-10 w-auto" />
         </Link>
 
         <form onSubmit={handleSearch} className="flex flex-1 mx-4">
