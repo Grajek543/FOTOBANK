@@ -9,9 +9,9 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // STANY na komunikat zamiast alertów
   const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState("info"); // "info" | "error" | "success"
+  const [messageType, setMessageType] = useState("info");
+  const [showActivatePrompt, setShowActivatePrompt] = useState(false);
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -37,14 +37,9 @@ function Login() {
           setMessageType("error");
           setMessage(detail || "Dostęp zabroniony.");
           if (detail?.includes("nie zostało aktywowane")) {
-            if (
-              window.confirm("Chcesz przejść do strony aktywacji konta?")
-            ) {
-              navigate("/activate");
-            }
+            setShowActivatePrompt(true);
           }
         } else if (err.response?.status === 401) {
-          // Zawsze wyświetlamy tylko: "Nieprawidłowy login lub hasło."
           setMessageType("error");
           setMessage("Nieprawidłowy login lub hasło.");
         } else {
@@ -56,8 +51,8 @@ function Login() {
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-50">
-      <div className="bg-white shadow-md rounded-lg p-8 w-full max-w-md">
+    <div className="flex justify-center items-center min-h-screen bg-gray-50 relative">
+      <div className="bg-white shadow-md rounded-lg p-8 w-full max-w-md z-10">
         <h2 className="text-2xl font-bold mb-6 text-center">Logowanie</h2>
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
@@ -91,14 +86,11 @@ function Login() {
           </button>
         </form>
 
-        {/* WYŚWIETLANIE KOMUNIKATU INLINE */}
         {message && (
           <p
-            className={
-              messageType === "error"
-                ? "mt-2 text-red-600 text-sm"
-                : "mt-2 text-green-600 text-sm"
-            }
+            className={`mt-2 text-sm ${
+              messageType === "error" ? "text-red-600" : "text-green-600"
+            }`}
           >
             {message}
           </p>
@@ -110,6 +102,31 @@ function Login() {
           </a>
         </p>
       </div>
+
+      {/* MODAL */}
+      {showActivatePrompt && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded shadow-lg max-w-xs w-full text-center">
+            <p className="mb-4">Twoje konto nie jest aktywowane.</p>
+            <p className="mb-4">Przejść do aktywacji?</p>
+
+            <div className="flex justify-center space-x-4">
+              <button
+                onClick={() => navigate("/activate")}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Tak
+              </button>
+              <button
+                onClick={() => setShowActivatePrompt(false)}
+                className="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
+              >
+                Anuluj
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
