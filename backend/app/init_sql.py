@@ -139,7 +139,9 @@ def create_sql_objects():
         ("Jesien"), ("Wiosna"), ("Lato"), ("Zachod"), ("Wschod"),
         ("Dom"), ("Wnetrze"), ("Ulica"), ("Cienie"), ("Noc"),
         ("Swieta"), ("Halloween"), ("Wielkanoc"), ("Biznes"), ("Finanse"),
-        ("Muzyka"), ("Instrumenty"), ("Sztuka"), ("Rzezba"), ("Dziecko")
+        ("Muzyka"), ("Instrumenty"), ("Sztuka"), ("Rzezba"), ("Dziecko"), ("Emocje")
+        , ("Retro"), ("Kosmos"), ("Przemysl"), ("Przemysl"), ("Milosc"), ("Fantasy")
+        , ("Edukacja"), ("IT"), ("Lotnictwo"), ("Rosliny")
         """))
 
         # 9. Funkcja: Statystyki systemowe

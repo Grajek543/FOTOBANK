@@ -74,3 +74,16 @@ def get_cart_sum(user_id: int = Depends(get_current_user), db: Session = Depends
     total = result.scalar()
     print(f"DEBUG: total from cart_sum = {total}")
     return {"total": total or 0}
+
+
+@router.get("/count")
+def cart_item_count(user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
+    result = db.execute(
+        text("""
+            SELECT COUNT(*) FROM cart_items
+            WHERE cart_id = (SELECT id FROM cart WHERE user_id = :uid)
+        """),
+        {"uid": user_id}
+    ).scalar()
+
+    return {"count": result or 0}

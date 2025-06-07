@@ -23,6 +23,8 @@ function PaypalSuccess() {
       headers: { Authorization: `Bearer ${token}` },
     })
     .then(() => {
+      // Wyzeruj licznik koszyka po udanej płatności
+      window.dispatchEvent(new CustomEvent("cartUpdated", { detail: 0 }));
       navigate("/");
     })
     .catch((err) => {
@@ -31,7 +33,7 @@ function PaypalSuccess() {
     });
   }, [location, navigate, token]);
 
-  return <p className="text-center p-8">Trwa potwierdzanie płatności PayPal...</p>;
+  return <p className="text-center p-8">Trwa potwierdzenie płatności PayPal...</p>;
 }
 
 export default PaypalSuccess;

@@ -37,21 +37,33 @@ function PhotoDetails() {
       .then(() => {
         setMessageType("success");
         setMessage("Zdjęcie dodane do koszyka!");
+
+    api
+      .get(`${API_URL}/cart/count`, {
+        headers: { Authorization: `Bearer ${token}` }
       })
-      .catch((err) => {
-        const detail = err.response?.data?.detail;
-        setMessageType("error");
-        if (detail === "To zdjęcie jest już w koszyku.") {
-          setMessage("To zdjęcie już znajduje się w koszyku.");
-        } else if (
-          detail === "Nie możesz dodać własnego zdjęcia do koszyka."
-        ) {
-          setMessage("Nie możesz kupować własnych zdjęć.");
-        } else {
-          console.error("Błąd dodawania do koszyka:", err);
-          setMessage("Wystąpił błąd podczas dodawania do koszyka.");
-        }
+      .then((res) => {
+        const event = new CustomEvent("cartUpdated", { detail: res.data.count });
+        window.dispatchEvent(event);
       });
+  })
+  .catch((err) => {
+    const detail = err.response?.data?.detail;
+    setMessageType("error");
+    if (detail === "To zdjęcie jest już w koszyku.") {
+      setMessage("To zdjęcie już znajduje się w koszyku.");
+    } else if (
+      detail === "Nie możesz dodać własnego zdjęcia do koszyka."
+    ) {
+      setMessage("Nie możesz kupować własnych zdjęć.");
+    } else {
+      console.error("Błąd dodawania do koszyka:", err);
+      setMessage("Wystąpił błąd podczas dodawania do koszyka.");
+    }
+  });
+
+
+      
   };
 
   const isVideo = /\.(mp4|mov|mkv)$/i.test(photo?.file_url || "");

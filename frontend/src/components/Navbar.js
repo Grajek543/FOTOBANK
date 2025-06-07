@@ -1,25 +1,22 @@
-//src/components/Navbar.js
+// src/components/Navbar.js
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { FaSearch, FaUserCircle, FaShoppingCart } from "react-icons/fa";
+import { FaSearch, FaUserCircle, FaShoppingCart, FaCheckCircle } from "react-icons/fa";
 import api from "../api/axios";
 import logo from "../images/fotobank_200x50_bt.png";
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
-export default function Navbar({ isAuthenticated, setIsAuthenticated }) {
+export default function Navbar({ isAuthenticated, setIsAuthenticated, cartCount, setCartCount }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
   const dropdownRef = useRef(null);
-  
-
 
   useEffect(() => {
     if (isAuthenticated) {
       const token = localStorage.getItem("access_token");
-
       api
         .get(`${API_URL}/users/me`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -103,16 +100,13 @@ export default function Navbar({ isAuthenticated, setIsAuthenticated }) {
                     <Link to="/settings" className="block px-4 py-2 hover:bg-gray-100">
                       Ustawienia
                     </Link>
-                    {isAuthenticated && (
                     <Link to="/purchased" className="block px-4 py-2 hover:bg-gray-100">
                       Zakupione
-                      </Link>
-                      )}
+                    </Link>
                     {user?.role === "admin" && (
                       <Link to="/admin" className="block px-4 py-2 hover:bg-gray-100">
                         Panel admina
                       </Link>
-                    
                     )}
                     <div
                       onClick={handleLogout}
@@ -125,8 +119,15 @@ export default function Navbar({ isAuthenticated, setIsAuthenticated }) {
                 )}
               </div>
 
+
+
               <Link to="/cart" className="relative">
                 <FaShoppingCart size={20} />
+                {cartCount > 0 && (
+                  <span className="absolute -bottom-2 -right-2 bg-red-600 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                    {cartCount}
+                  </span>
+                )}
               </Link>
             </>
           ) : (
@@ -140,7 +141,6 @@ export default function Navbar({ isAuthenticated, setIsAuthenticated }) {
               >
                 Rejestracja
               </Link>
-
             </>
           )}
         </div>

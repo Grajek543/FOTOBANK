@@ -63,6 +63,7 @@ function Cart() {
       })
       .then(() => {
         setPhotoIds((prev) => prev.filter((id) => id !== photoId));
+
         api
           .get(`${API_URL}/cart/sum`, {
             headers: { Authorization: `Bearer ${token}` },
@@ -71,8 +72,19 @@ function Cart() {
           .catch((err) =>
             console.error("Błąd ładowania sumy koszyka:", err)
           );
+
+        api
+          .get(`${API_URL}/cart/count`, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+          .then((res) => {
+            const event = new CustomEvent("cartUpdated", { detail: res.data.count });
+           window.dispatchEvent(event);
+          });
       })
-      .catch((err) => console.error("Błąd usuwania z koszyka:", err));
+    .catch((err) => console.error("Błąd usuwania z koszyka:", err));
+
+
   };
 
   const handleCheckout = () => {
@@ -87,6 +99,7 @@ function Cart() {
         setPhotoIds([]);
         setPhotos([]);
         setTotal(0);
+        window.dispatchEvent(new CustomEvent("cartUpdated", { detail: 0 }));
       })
       .catch((err) => {
         console.error("Błąd realizacji zamówienia:", err);

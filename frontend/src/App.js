@@ -22,26 +22,45 @@ import ResetPassword from "./pages/ResetPassword";
 import PaypalSuccess from "./pages/PaypalSuccess";
 import PurchasedPhotos from "./pages/PurchasedPhotos";
 
+import api from "./api/axios";
+
 function AppContent() {
   const location = useLocation();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState(null);
+  const [cartCount, setCartCount] = useState(0);
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
     const role = localStorage.getItem("role");
     setIsAuthenticated(!!token);
     setUserRole(role);
+
+    if (token) {
+      api
+        .get("/cart/count", {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        .then((res) => setCartCount(res.data.count))
+        .catch(() => setCartCount(0));
+    }
   }, [location]);
+
+  useEffect(() => {
+    const handleCartUpdate = (e) => setCartCount(e.detail);
+    window.addEventListener("cartUpdated", handleCartUpdate);
+    return () => window.removeEventListener("cartUpdated", handleCartUpdate);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Globalne powiadomienia */}
       <GlobalNotification />
 
       <Navbar
         isAuthenticated={isAuthenticated}
         setIsAuthenticated={setIsAuthenticated}
+        cartCount={cartCount}
+        setCartCount={setCartCount}
       />
 
       <main className="flex-grow px-6 py-4">
@@ -64,12 +83,8 @@ function AppContent() {
             path="/admin"
             element={userRole === "admin" ? <AdminPanel /> : <Navigate to="/" />}
           />
-
           <Route path="/photo/:photoId" element={<PhotoDetails />} />
-          <Route
-            path="*"
-            element={<div>404 w React Router / brak dopasowanej ścieżki</div>}
-          />
+          <Route path="*" element={<div>404 w React Router / brak dopasowanej ścieżki</div>} />
         </Routes>
       </main>
 
