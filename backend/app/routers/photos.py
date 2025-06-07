@@ -114,9 +114,9 @@ def get_user_photos(
     admin_user: User = Depends(check_admin),
     db: Session = Depends(get_db),
 ):
-    # <- body must be here, indented four spaces
-    photos = db.query(models.Photo).filter(models.Photo.owner_id == user_id).all()
-    return [build_photo_response(p) for p in photos]
+    rows = db.execute(text("SELECT * FROM photos WHERE owner_id = :uid"), {"uid": user_id}).mappings().all()
+    return [build_photo_response(Photo(**r)) for r in rows]
+
 
 @router.post("/upload", response_model=List[schemas.PhotoOut])
 async def upload_photos(
@@ -219,12 +219,15 @@ def list_photos(
 
 @router.get("/me", response_model=List[schemas.PhotoOut])
 def get_my_photos(user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
-    photos = db.query(models.Photo).filter(models.Photo.owner_id == user_id).all()
-    return [build_photo_response(p) for p in photos]
+    rows = db.execute(text("SELECT * FROM photos WHERE owner_id = :uid"), {"uid": user_id}).mappings().all()
+    return [build_photo_response(Photo(**r)) for r in rows]
+
 
 @router.get("/categories", response_model=List[schemas.CategoryOut])
 def get_categories(db: Session = Depends(get_db)):
-    return db.query(models.Category).all()
+    rows = db.execute(text("SELECT id, name FROM categories")).mappings().all()
+    return [{"id": r["id"], "name": r["name"]} for r in rows]
+
 
 @router.get("/{photo_id}/file")
 def get_file(photo_id: int, db: Session = Depends(get_db)):
@@ -300,13 +303,14 @@ def update_photo(
 
 @router.get("/purchased", response_model=List[schemas.PhotoOut])
 def get_purchased_photos(user=Depends(get_current_user), db: Session = Depends(get_db)):
-    photos = (
-        db.query(models.Photo)
-        .join(models.Purchase)
-        .filter(models.Purchase.user_id == user)
-        .all()
-    )
-    return [build_photo_response(p) for p in photos]
+    stmt = text("""
+        SELECT p.* FROM photos p
+        JOIN purchases pu ON p.id = pu.photo_id
+        WHERE pu.user_id = :uid
+    """)
+    rows = db.execute(stmt, {"uid": user}).mappings().all()
+    return [build_photo_response(Photo(**r)) for r in rows]
+
 
 @router.get("/download/{photo_id}")
 def download_photo(
@@ -314,12 +318,13 @@ def download_photo(
     user_id: int = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    photo = (
-        db.query(models.Photo)
-        .join(models.Purchase)
-        .filter(models.Photo.id == photo_id, models.Purchase.user_id == user_id)
-        .first()
-    )
+    stmt = text("""
+        SELECT p.* FROM photos p
+        JOIN purchases pu ON p.id = pu.photo_id
+        WHERE pu.user_id = :uid AND p.id = :photo_id
+    """)
+    row = db.execute(stmt, {"uid": user_id, "photo_id": photo_id}).mappings().first()
+
 
     if not photo or not photo.file_path:
         raise HTTPException(status_code=404, detail="Nie znaleziono pliku lub brak dostępu")

@@ -1,3 +1,4 @@
+# app/routers/cart.py
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -16,8 +17,9 @@ def add_to_cart(photo_id: int, user_id: int = Depends(get_current_user), db: Ses
         db.commit()
         db.refresh(cart)
 
-    existing = db.query(models.CartItem).filter_by(cart_id=cart.id, photo_id=photo_id).first()
-    if existing:
+    stmt = text("SELECT 1 FROM cart_items WHERE cart_id = :cid AND photo_id = :pid LIMIT 1")
+    exists = db.execute(stmt, {"cid": cart.id, "pid": photo_id}).first()
+    if exists:
         raise HTTPException(status_code=400, detail="To zdjęcie jest już w koszyku.")
 
     photo = db.query(models.Photo).filter_by(id=photo_id).first()
@@ -38,7 +40,14 @@ def view_cart(user_id: int = Depends(get_current_user), db: Session = Depends(ge
     cart = db.query(models.Cart).filter_by(user_id=user_id).first()
     if not cart:
         return []
-    return [item.photo_id for item in cart.items]
+    stmt = text("""
+        SELECT ci.photo_id
+        FROM cart c JOIN cart_items ci ON c.id = ci.cart_id
+        WHERE c.user_id = :uid
+    """)
+    rows = db.execute(stmt, {"uid": user_id}).fetchall()
+    return [r[0] for r in rows]
+
 
 @router.delete("/remove/{photo_id}")
 def remove_from_cart(photo_id: int, user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -46,11 +55,12 @@ def remove_from_cart(photo_id: int, user_id: int = Depends(get_current_user), db
     if not cart:
         raise HTTPException(status_code=404, detail="Koszyk nie istnieje")
 
-    item = db.query(models.CartItem).filter_by(cart_id=cart.id, photo_id=photo_id).first()
-    if not item:
-        raise HTTPException(status_code=404, detail="Zdjęcie nie w koszyku")
+    stmt = text("""
+        DELETE FROM cart_items 
+        WHERE cart_id = (SELECT id FROM cart WHERE user_id = :uid) AND photo_id = :pid
+    """)
+    db.execute(stmt, {"uid": user_id, "pid": photo_id})
 
-    db.delete(item)
     db.commit()
     return {"message": "Usunięto z koszyka"}
 
@@ -60,7 +70,15 @@ def checkout(user_id: int = Depends(get_current_user), db: Session = Depends(get
     if not cart or not cart.items:
         raise HTTPException(status_code=400, detail="Koszyk jest pusty.")
 
-    total = sum(item.photo.price for item in cart.items if item.photo)
+    stmt = text("""
+        SELECT SUM(p.price)
+        FROM cart c
+        JOIN cart_items ci ON c.id = ci.cart_id
+        JOIN photos p ON ci.photo_id = p.id
+        WHERE c.user_id = :uid
+    """)
+    total = db.execute(stmt, {"uid": user_id}).scalar()
+
 
     db.query(models.CartItem).filter_by(cart_id=cart.id).delete()
     db.commit()
