@@ -120,28 +120,64 @@ Zespół FotoBank
 
 # ----------------------------- REGISTER + LOGIN -----------------------------
 @router.post("/register", response_model=schemas.UserRead)
-def register_user(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
+def register_user(
+    user_data: schemas.UserCreate,
+    db: Session = Depends(get_db),
+):
+    # 1) walidacja unikalności
     if db.query(models.User).filter(models.User.email == user_data.email).first():
-        raise HTTPException(status_code=400, detail="Użytkownik z takim e-mailem już istnieje.")
+        raise HTTPException(400, "Użytkownik z takim e-mailem już istnieje.")
+    if user_data.username and db.query(models.User).filter(
+        models.User.username == user_data.username
+    ).first():
+        raise HTTPException(400, "Nazwa użytkownika jest już zajęta.")
 
-    if user_data.username and db.query(models.User).filter(models.User.username == user_data.username).first():
-        raise HTTPException(status_code=400, detail="Nazwa użytkownika jest już zajęta.")
+    # 2) przygotowanie danych
+    activation_code = f"{random.randint(100000, 999999)}"
+    pwd_hash = pwd_context.hash(user_data.password)
 
-    code = f"{random.randint(100000, 999999)}"
+    try:
+        # 3) ręczna transakcja: oba INSERTy, potem commit albo rollback
+        # 3a) Wstawiamy użytkownika
+        insert_user_sql = text("""
+            INSERT INTO users
+              (email, username, hashed_password, role, banned, full_banned, is_active, activation_code)
+            VALUES
+              (:email, :username, :pwd_hash, 'user', 0, 0, 0, :code)
+        """)
+        result = db.execute(
+            insert_user_sql,
+            {
+                "email": user_data.email,
+                "username": user_data.username,
+                "pwd_hash": pwd_hash,
+                "code": activation_code,
+            },
+        )
+        user_id = result.lastrowid
+        if not user_id:
+            raise RuntimeError("Brak lastrowid z INSERT users")
 
-    new_user = models.User(
-        email=user_data.email,
-        hashed_password=pwd_context.hash(user_data.password),
-        username=user_data.username,
-        is_active=False,
-        activation_code=code
-    )
+        # 3b) Wstawiamy koszyk
+        db.execute(
+            text("INSERT INTO cart (user_id) VALUES (:user_id)"),
+            {"user_id": user_id},
+        )
 
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
+        # 3c) zatwierdzamy oba INSERTy
+        db.commit()
+    except Exception as e:
+        # w razie błędu wycofujemy i zwracamy 400
+        db.rollback()
+        raise HTTPException(400, f"Rejestracja nie powiodła się: {e}")
 
-    send_activation_email(new_user.email, code, purpose="activation")
+    # 4) pobieramy ORM-owo świeżo utworzonego użytkownika
+    new_user = db.query(models.User).get(user_id)
+    if not new_user:
+        raise HTTPException(500, "Nie udało się wczytać nowego użytkownika.")
+
+    # 5) wysyłamy maila aktywacyjnego
+    send_activation_email(new_user.email, activation_code, purpose="activation")
 
     return new_user
 
@@ -330,15 +366,47 @@ class PasswordReset(BaseModel):
 
 @router.post("/reset-password")
 def reset_password(data: PasswordReset, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.email == data.email).first()
-    if not user or user.activation_code != data.code:
-        raise HTTPException(status_code=400, detail="Nieprawidłowy kod resetujący lub e-mail.")
+    """
+    Atomowa transakcja: zmiana hasła + usunięcie kodu aktywacyjnego
+    za pomocą surowego zapytania SQL.
+    """
+    # 1) Zahashuj nowe hasło
+    new_hash = pwd_context.hash(data.new_password)
 
-    user.hashed_password = pwd_context.hash(data.new_password)
-    user.activation_code = None
-    db.commit()
+    try:
+        # 2) Wykonaj raw query w ramach jednej transakcji
+        with db.begin():
+            stmt = text("""
+                UPDATE users
+                   SET hashed_password = :new_hash,
+                       activation_code = NULL
+                 WHERE email = :email
+                   AND activation_code = :code
+            """)
+            result = db.execute(stmt, {
+                "new_hash": new_hash,
+                "email": data.email,
+                "code": data.code,
+            })
+            # 3) Jeżeli nic nie zaktualizowano, kod lub email są nieprawidłowe
+            if result.rowcount == 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Nieprawidłowy kod resetujący lub e-mail."
+                )
+        # commit nastąpi automatycznie przy wyjściu z with db.begin()
+    except HTTPException:
+        # Przepuśćmy HTTPException dalej, żeby FastAPI zwróciło odpowiedni status
+        raise
+    except Exception as e:
+        # W razie innego błędu zwróćmy 500 i rollback
+        raise HTTPException(
+            status_code=500,
+            detail=f"Błąd aktualizacji hasła: {e}"
+        )
+
+    # 4) Zwróć komunikat sukcesu
     return {"message": "Hasło zostało zaktualizowane."}
-
 
 # ----------------------------- USUWANIE UŻYTKOWNIKA -----------------------------
 def delete_user_files(db: Session, user_id: int):

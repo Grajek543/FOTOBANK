@@ -4,10 +4,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from app import models
 from app.database import engine, Base
 from app.routers import users, photos, users, cart, payments
-from app.routers.upload_router import router as upload_router   # ← DODAJ
+from app.routers.upload_router import router as upload_router
+from app.init_sql import create_sql_objects
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
+
 Base.metadata.create_all(bind=engine)
+Base.metadata.create_all(bind=engine)
+create_sql_objects()
 
 app = FastAPI()
 
