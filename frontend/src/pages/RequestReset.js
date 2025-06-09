@@ -4,25 +4,29 @@ const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
 
 function RequestReset() {
   const [email, setEmail] = useState("");
-
-  // STANY na komunikat zamiast alertów
+  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState("info"); // "info" | "error" | "success"
+  const [messageType, setMessageType] = useState("info");
 
   const handleRequest = (e) => {
     e.preventDefault();
     setMessage("");
+    setLoading(true);
 
     api
       .post(`${API_URL}/users/request-password-reset`, { email })
       .then(() => {
         setMessageType("success");
         setMessage("Kod resetujący wysłany na e-mail.");
+        setTimeout(() => {
+          window.location.href = "/reset";
+        });
       })
       .catch(() => {
         setMessageType("error");
         setMessage("Nie udało się wysłać kodu.");
-      });
+      })
+      .finally(() => setLoading(false));
   };
 
   return (
@@ -36,8 +40,14 @@ function RequestReset() {
         required
         className="w-full border p-2 mb-4"
       />
-      <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded">
-        Wyślij kod
+      <button
+        type="submit"
+        disabled={loading}
+        className={`w-full py-2 rounded-md text-white ${
+          loading ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"
+        }`}
+      >
+        {loading ? "Wysyłanie..." : "Wyślij kod"}
       </button>
 
       {/* WYŚWIETLANIE KOMUNIKATU INLINE */}

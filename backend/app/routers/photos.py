@@ -219,14 +219,16 @@ def list_photos(
 
 @router.get("/me", response_model=List[schemas.PhotoOut])
 def get_my_photos(user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
-    rows = db.execute(text("SELECT * FROM photos WHERE owner_id = :uid"), {"uid": user_id}).mappings().all()
-    return [build_photo_response(Photo(**r)) for r in rows]
+    photos = db.query(models.Photo).options(joinedload(models.Photo.categories)).filter(models.Photo.owner_id == user_id).all()
+    return [build_photo_response(photo) for photo in photos]
+
 
 
 @router.get("/categories", response_model=List[schemas.CategoryOut])
 def get_categories(db: Session = Depends(get_db)):
-    rows = db.execute(text("SELECT id, name FROM categories")).mappings().all()
-    return [{"id": r["id"], "name": r["name"]} for r in rows]
+    categories = db.query(models.Category).all()
+    return [{"id": cat.id, "name": cat.name} for cat in categories]
+
 
 
 @router.get("/{photo_id}/file")
@@ -325,13 +327,17 @@ def download_photo(
     """)
     row = db.execute(stmt, {"uid": user_id, "photo_id": photo_id}).mappings().first()
 
-
-    if not photo or not photo.file_path:
+    if not row:
         raise HTTPException(status_code=404, detail="Nie znaleziono pliku lub brak dostępu")
+
+    photo = models.Photo(**row)
+
+    if not photo.file_path:
+        raise HTTPException(status_code=404, detail="Brak dostępu do pliku")
 
     file_path = Path(photo.file_path)
     if not file_path.exists():
-        raise HTTPException(status_code=404, detail="Plik nie istnieje na dysku")
+        raise HTTPException(status_code=404, detail="Plik nie znaleziony na dysku")
 
     media_type, _ = mimetypes.guess_type(str(file_path))
     return FileResponse(path=file_path, media_type=media_type, filename=file_path.name)
@@ -472,11 +478,13 @@ def set_photo_categories(
         raise HTTPException(404, "Zdjęcie nie znalezione lub brak dostępu")
 
     db.query(models.PhotoCategory).filter(models.PhotoCategory.photo_id == photo_id).delete()
+
     for cat_id in category_ids:
         db.add(models.PhotoCategory(photo_id=photo_id, category_id=cat_id))
 
     db.commit()
     return {"message": "Kategorie zaktualizowane"}
+
 
 
 @router.get("/me/count")
