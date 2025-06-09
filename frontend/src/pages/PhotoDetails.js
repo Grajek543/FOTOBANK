@@ -24,56 +24,55 @@ function PhotoDetails() {
   }, [photoId]);
 
   const handleAddToCart = () => {
-    const token = localStorage.getItem("access_token");
-    if (!token) return;
+  const token = localStorage.getItem("access_token");
+  if (!token) return;
 
-    setMessage("");
-    api
-      .post(
-        `${API_URL}/cart/add/${photoId}`,
-        null,
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
-      .then(() => {
-        setMessageType("success");
-        setMessage("Zdjęcie dodane do koszyka!");
+  setMessage("");
+  api
+    .post(
+      `${API_URL}/cart/add/${photoId}`,
+      null,
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+    .then(() => {
+      setMessageType("success");
+      setMessage("Zdjęcie dodane do koszyka!");
 
-    api
-      .get(`${API_URL}/cart/count`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      .then((res) => {
-        const event = new CustomEvent("cartUpdated", { detail: res.data.count });
-        window.dispatchEvent(event);
-      });
-  })
-  .catch((err) => {
-    const detail = err.response?.data?.detail;
-    setMessageType("error");
-    if (detail === "To zdjęcie jest już w koszyku.") {
-      setMessage("To zdjęcie już znajduje się w koszyku.");
-    } else if (
-      detail === "Nie możesz dodać własnego zdjęcia do koszyka."
-    ) {
-      setMessage("Nie możesz kupować własnych zdjęć.");
-    } else {
-      console.error("Błąd dodawania do koszyka:", err);
-      setMessage("Wystąpił błąd podczas dodawania do koszyka.");
-    }
-  });
+      api
+        .get(`${API_URL}/cart/count`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        .then((res) => {
+          const event = new CustomEvent("cartUpdated", { detail: res.data.count });
+          window.dispatchEvent(event);
+        });
+    })
+    .catch((err) => {
+      const detail = err.response?.data?.detail;
+      console.log("Odpowiedź serwera:", err.response?.data);
 
+      setMessageType("error");
 
-      
-  };
+      if (detail === "To zdjęcie jest już w koszyku.") {
+        setMessage("To zdjęcie już znajduje się w koszyku.");
+      } else if (detail === "Nie możesz dodać własnego zdjęcia do koszyka.") {
+        setMessage("Nie możesz kupować własnych zdjęć.");
+      } else if (detail === "To zdjęcie zostało już zakupione.") {
+        setMessage("To zdjęcie zostało już zakupione.");
+      } else {
+        console.error("Błąd dodawania do koszyka:", err);
+        setMessage("Wystąpił błąd podczas dodawania do koszyka.");
+      }
+    });
+};
+
 
   const isVideo = /\.(mp4|mov|mkv)$/i.test(photo?.file_url || "");
 
   const normalize = (path) => {
     if (!path) return "";
     if (/^https?:\/\//i.test(path)) return path.replace(/\\/g, "/");
-    return `${API_URL}${
-      path.startsWith("/") ? "" : "/"
-    }${path.replace(/\\/g, "/")}`;
+    return `${API_URL}${path.startsWith("/") ? "" : "/"}${path.replace(/\\/g, "/")}`;
   };
 
   if (!photo) {

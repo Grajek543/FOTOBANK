@@ -6,7 +6,7 @@ from paypalcheckoutsdk.orders import OrdersCreateRequest, OrdersCaptureRequest
 from app.paypal_client import paypal_client
 from app import models
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 router = APIRouter(prefix="/payments", tags=["Payments"])
 
@@ -66,14 +66,16 @@ def capture_order(order_id: str, user_id: int = Depends(get_current_user), db: S
     if not cart or not cart.items:
         raise HTTPException(400, "Koszyk pusty lub wygasł")
 
-    # Utwórz zamówienie
-    new_order = models.Order(user_id=user_id, status="completed", created_at=datetime.utcnow())
+    new_order = models.Order(
+        user_id=user_id,
+        status="completed",
+        created_at=datetime.utcnow() + timedelta(hours=2)
+    )
     db.add(new_order)
-    db.flush()  # aby uzyskać ID
+    db.flush()
 
     total = 0
 
-    # Dodaj przedmioty do order_items
     for item in cart.items:
         db.add(models.OrderItem(
             order_id=new_order.id,
@@ -84,15 +86,13 @@ def capture_order(order_id: str, user_id: int = Depends(get_current_user), db: S
         db.add(models.Purchase(
             user_id=user_id,
             photo_id=item.photo_id,
-            purchase_date=datetime.utcnow(),
+            purchase_date=datetime.utcnow() + timedelta(hours=2),
             payment_status="completed",
             total_cost=item.photo.price,
-            created_at=datetime.utcnow()
+            created_at=datetime.utcnow() + timedelta(hours=2)
         ))
         total += item.photo.price
 
-
-    # Wyczyść koszyk
     db.query(models.CartItem).filter_by(cart_id=cart.id).delete()
     db.commit()
 

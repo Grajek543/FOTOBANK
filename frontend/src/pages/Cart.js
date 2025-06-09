@@ -87,6 +87,31 @@ function Cart() {
 
   };
 
+  const handleAddToPurchased = () => {
+  api
+    .post(`${API_URL}/cart/add-to-purchased`, null, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    .then((res) => {
+      setMessageType("success");
+      setMessage(res.data.message);
+      setPhotoIds([]);
+      setPhotos([]);
+      setTotal(0); 
+    })
+    .catch((err) => {
+      if (err.response && err.response.data && err.response.data.detail) {
+        setMessageType("error");
+        setMessage(err.response.data.detail);
+      } else {
+        setMessageType("error");
+        setMessage("Nie udało się dodać zdjęć do zakupionych.");
+      }
+    });
+};
+
+
+
   const handleCheckout = () => {
     setMessage("");
     api
@@ -208,17 +233,28 @@ function Cart() {
             })}
           </div>
 
+
           <div className="mt-8 text-center space-y-4">
             <p className="text-xl font-semibold">
               Łączna kwota: {total.toFixed(2)} zł
             </p>
-            <button
-              onClick={handlePayPal}
-              className="bg-yellow-500 text-white px-6 py-2 rounded hover:bg-yellow-600 transition w-full flex items-center justify-center"
-              disabled={loadingPayPal}
-            >
-              {loadingPayPal ? "Ładowanie PayPal..." : "Zapłać przez PayPal"}
-            </button>
+            {total > 0 ? (
+  <button
+    onClick={handlePayPal}
+    className="bg-yellow-500 text-white px-6 py-2 rounded hover:bg-yellow-600 transition w-full flex items-center justify-center"
+    disabled={loadingPayPal}
+  >
+    {loadingPayPal ? "Ładowanie PayPal..." : "Zapłać przez PayPal"}
+  </button>
+) : (
+  <button
+    onClick={handleAddToPurchased}
+    className="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600 transition w-full"
+  >
+    Dodaj do zakupionych
+  </button>
+)}
+
           </div>
         </>
       )}

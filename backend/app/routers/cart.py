@@ -17,6 +17,20 @@ def add_to_cart(photo_id: int, user_id: int = Depends(get_current_user), db: Ses
         db.commit()
         db.refresh(cart)
 
+    # Sprawdzamy, czy zdjęcie już zostało zakupione przez użytkownika
+    stmt_check = text("""
+        SELECT 1
+        FROM purchases
+        WHERE user_id = :user_id AND photo_id = :photo_id
+        LIMIT 1
+    """)
+    existing_purchase = db.execute(stmt_check, {"user_id": user_id, "photo_id": photo_id}).first()
+
+    if existing_purchase:
+        # Jeśli zdjęcie zostało już zakupione, zwróć błąd z odpowiednim komunikatem
+        raise HTTPException(status_code=400, detail="To zdjęcie zostało już zakupione.")
+
+    # Sprawdzamy, czy zdjęcie już jest w koszyku
     stmt = text("SELECT 1 FROM cart_items WHERE cart_id = :cid AND photo_id = :pid LIMIT 1")
     exists = db.execute(stmt, {"cid": cart.id, "pid": photo_id}).first()
     if exists:
@@ -32,6 +46,7 @@ def add_to_cart(photo_id: int, user_id: int = Depends(get_current_user), db: Ses
     db.add(item)
     db.commit()
     return {"message": "Dodano do koszyka"}
+
 
 
 
@@ -105,3 +120,37 @@ def cart_item_count(user_id: int = Depends(get_current_user), db: Session = Depe
     ).scalar()
 
     return {"count": result or 0}
+
+
+@router.post("/add-to-purchased")
+def add_to_purchased(user_id: int = Depends(get_current_user), db: Session = Depends(get_db)):
+    cart = db.query(models.Cart).filter_by(user_id=user_id).first()
+    if not cart or not cart.items:
+        raise HTTPException(status_code=400, detail="Koszyk jest pusty.")
+
+    total = 0
+    try:
+        for item in cart.items:
+            photo = item.photo
+            if not photo:
+                continue
+
+            stmt = text("""
+                INSERT INTO purchases (user_id, photo_id, purchase_date, payment_status, total_cost, created_at)
+                VALUES (:user_id, :photo_id, NOW(), 'completed', :total_cost, NOW())
+            """)
+            db.execute(stmt, {"user_id": user_id, "photo_id": photo.id, "total_cost": photo.price})
+
+            total += photo.price
+
+            stmt_delete = text("""
+                DELETE FROM cart_items WHERE cart_id = :cart_id AND photo_id = :photo_id
+            """)
+            db.execute(stmt_delete, {"cart_id": cart.id, "photo_id": photo.id})
+
+        db.commit()
+        return {"message": f"Zdjęcia zostały przeniesione do zakupu. Kwota: {total:.2f} zł"}
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Błąd podczas przetwarzania zakupu: " + str(e))
